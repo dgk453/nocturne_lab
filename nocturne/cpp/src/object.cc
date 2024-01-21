@@ -117,6 +117,7 @@ void Object::KinematicBicycleStep(float dt) {
   geometry::Vector2D vel = Velocity();
   geometry::Vector2D rot = geometry::Vector2D(std::cos(heading_), std::sin(heading_));
   position_ = position_ + vel * dt + 0.5 * acceleration_ * rot * (float)pow(dt, 2);
+
   heading_ = geometry::utils::AngleAdd(heading_, (float)(steering_ * (speed_ * dt + 0.5 * acceleration_ * pow(dt, 2))));
   speed_ = ClipSpeed(speed_ + acceleration_ * dt);
 }

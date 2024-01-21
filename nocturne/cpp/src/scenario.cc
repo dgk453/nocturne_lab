@@ -546,6 +546,8 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
   const std::vector<float>& cur_headings = expert_headings_.at(obj.id());
   const std::vector<float>& cur_speeds = expert_speeds_.at(obj.id());
   const std::vector<bool>& valid_mask = expert_valid_masks_.at(obj.id());
+  const std::vector<geometry::Vector2D>& cur_velocities =
+      expert_velocities_.at(obj.id());
   const int64_t trajectory_length = valid_mask.size();
 
   if (timestamp < 0 || timestamp > trajectory_length - 1) {
@@ -559,7 +561,10 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
   // a_t = (v_{t+1} - v_t) / dt
   const float accel =
       (cur_speeds[timestamp + 1] - cur_speeds[timestamp]) / expert_dt_;
-  const float delta_yaw = geometry::utils::AngleSub(cur_headings[timestamp + 1],
+  // Calculate the updated yaw using the velocity angle
+  float real_new_yaw = std::atan2(cur_velocities[timestamp + 1].y(),
+                                        cur_velocities[timestamp + 1].x());
+  const float delta_yaw = geometry::utils::AngleSub(real_new_yaw,
                                             cur_headings[timestamp]);
   // Calculate steering.
   float steering = delta_yaw / (cur_speeds[timestamp] * expert_dt_ + 0.5 * accel * pow(expert_dt_, 2));
@@ -905,10 +910,12 @@ void Scenario::LoadObjects(const json& objects_json) {
     std::vector<float> cur_headings;
     std::vector<float> cur_speeds;
     std::vector<bool> valid_mask;
+    std::vector<geometry::Vector2D> cur_velocities;
     cur_trajectory.reserve(trajectory_length);
     cur_headings.reserve(trajectory_length);
     cur_speeds.reserve(trajectory_length);
     valid_mask.reserve(trajectory_length);
+    cur_velocities.reserve(trajectory_length);
 
     float target_heading = 0.0f;
     float target_speed = 0.0f;
@@ -921,11 +928,14 @@ void Scenario::LoadObjects(const json& objects_json) {
       const float cur_speed =
           geometry::Vector2D(obj_velocity[i]["x"], obj_velocity[i]["y"]).Norm();
       const bool valid = static_cast<bool>(obj_valid[i]);
+      const geometry::Vector2D cur_velocity(obj_velocity[i]["x"],
+                                         obj_velocity[i]["y"]);
 
       cur_trajectory.push_back(cur_pos);
       cur_headings.push_back(cur_heading);
       cur_speeds.push_back(cur_speed);
       valid_mask.push_back(valid);
+      cur_velocities.push_back(cur_velocity);
 
       if (valid) {
         // Use the last valid heading and speed as target heading and speed.
@@ -985,6 +995,7 @@ void Scenario::LoadObjects(const json& objects_json) {
     expert_headings_.push_back(std::move(cur_headings));
     expert_speeds_.push_back(std::move(cur_speeds));
     expert_valid_masks_.push_back(std::move(valid_mask));
+    expert_velocities_.push_back(std::move(cur_velocities));
     ++cur_id;
   }
 
