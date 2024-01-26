@@ -84,5 +84,6 @@ models/
 figures/
 results/
 
-# Videos
+# Videos and scene info dicts
 videos/
+scene_info/

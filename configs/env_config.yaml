@@ -22,7 +22,7 @@ accel_upper_bound: 3
 steering_lower_bound: -0.7 # steer right
 steering_upper_bound: 0.7 # steer left
 steering_discretization: 5
-max_num_vehicles: 20 # Maximum number of vehicles in the scene we control
+max_num_vehicles: 50 # Maximum number of vehicles in the scene we control
 scenario:
   # initial timestep of the scenario (which ranges from timesteps 0 to 90)
   start_time: 0
@@ -57,7 +57,7 @@ remove_at_collide: true # if true, remove the agent when it collides
 
 # # # Goal settings # # # #
 target_positions:
-  randomize_goals: true # Randomize the goals
+  randomize_goals: false # Randomize the goals
   time_steps_list: [20, 40, 60] # The time steps at which we sample intermediate goals
 
 # # # Reward settings # # # #
