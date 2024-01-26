@@ -41,7 +41,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
 numpy = "^1.26.0"
-torch = "^2.0.1"
+torch = {extras = ["all"], version = "^2.0.1"}
 gym = "^0.26.2"
 pybind11 = "^2.11.1"
 python-box = "^7.1.1"
@@ -51,8 +51,6 @@ imageio = "^2.31.5"
 pyvirtualdisplay = "^3.0"
 typer = "^0.9.0"
 stable-baselines3 = "^2.1.0"
-torchvision = "^0.16.2"
-torchaudio = "^2.1.2"
 
 [tool.poetry.group.research.dependencies]
 ipykernel = "^6.25.2"

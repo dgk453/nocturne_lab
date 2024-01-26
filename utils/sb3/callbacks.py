@@ -101,8 +101,8 @@ class CustomMultiAgentCallback(BaseCallback):
         self.logger.record("rollout/obs_max", np.max(observations[valid_obs_mask]))
 
         # Evaluate policy on train and test dataset
-        # if self.iteration % self.exp_config.ma_callback.eval_freq == 0:
-        #     self._evaluate_policy(policy=self.model, dataset="valid", name="valid_det", det_mode=True)
+        if self.iteration % self.exp_config.ma_callback.eval_freq == 0:
+            self._evaluate_policy(policy=self.model, dataset="train", name="train_det", data_folder="data_full", det_mode=True)
 
         # Render
         if self.exp_config.ma_callback.save_video:
@@ -123,6 +123,12 @@ class CustomMultiAgentCallback(BaseCallback):
             if self.iteration % self.exp_config.ma_callback.model_save_freq == 0:
                 self._save_model()
 
+        # TODO @dc do this properly
+        # If intermediate goals are on, turn them off after ~ 2 M steps
+        if self.num_timesteps > 2_000_000 and self.locals["env"].env.config.target_positions.randomize_goals:
+            self.locals["env"].env.config.target_positions.randomize_goals = False
+            logging.info(f'Turning off randomized intermediate goals.')
+            
         # Update probabilities for sampling scenes
         if self.locals["env"].psr_dict is not None:
             self._update_sampling_probs()
@@ -165,6 +171,9 @@ class CustomMultiAgentCallback(BaseCallback):
         """Evaluate policy in a number of scenes."""
 
         env_config = self.env_config.copy()
+        
+        # Only use final goals (no intermediate)
+        env_config.target_positions.randomize_goals = False
 
         total_coll = 0
         total_goal_achieved = 0

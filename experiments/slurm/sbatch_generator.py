@@ -223,11 +223,11 @@ def save_scripts(sbatch_filename, bash_filename, file_path, run_script, fields, 
 
 if __name__ == '__main__':
 
-    SWEEP_NAME = 'S1000_0112'
+    SWEEP_NAME = 'randomized_goals'
 
     # Define SBATCH params
     fields = {
-        'time_h': 15, # Max time per job
+        'time_h': 47, # Max time per job
         'num_gpus': 1, # GPUs per job 
         'max_sim_jobs': 25, # Max jobs at the same time
         'job_name': SWEEP_NAME,
@@ -235,12 +235,13 @@ if __name__ == '__main__':
 
     params = {
         'sweep_name': [SWEEP_NAME], # Project name
-        'lr': [3e-4, 1e-4],
-        'reg_weight': [0.0, 0.001, 0.005, 0.0075, 0.01, 0.02],
-        'num_files': [1000],
-        'total_timesteps': [10_000_000], # Total training steps
+        'lr': [3e-4],
+        'ent_coef': [0.001, 0.002],
+        'reg_weight': [0.0, 0.005, 0.01, 0.025, 0.05, 0.2],
+        'total_timesteps': [60_000_000], # Total training steps
+        'num_controlled_veh': [1, 50], # Add multi-agent + single-agent baselines
     }
-
+    
     save_scripts(
         sbatch_filename=f"sbatch_{SWEEP_NAME}.sh",
         bash_filename="bash_exec.sh", #NOTE: don't change this name
