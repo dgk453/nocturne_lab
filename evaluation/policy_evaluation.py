@@ -34,8 +34,9 @@ def evaluate_policy(
         controlled_agents: Number of agents to control.
         data_path: Path to data.
         select_from_k_scenes: Number of scenes to select from.
-        num_episodes: Number of episodes to run; how many times to reset the environment.
-        scene_path_mapping (optional): Mapping from scene to dict with the number of intersecting paths of that scene.
+        num_episodes: Number of episodes to run; how many times to reset the environment to a new scene.
+        scene_path_mapping (dict, optional): Mapping from scene to dict with the number of intersecting 
+            paths of that scene.
         policy (optional): Policy to evaluate.
         deterministic (optional): Whether to use a deterministic policy.
 
@@ -60,30 +61,30 @@ def evaluate_policy(
     env = BaseEnv(env_config)
 
     # Storage
-    df = pd.DataFrame(
-        columns=[
-            "scene_id",
-            "veh_id",
-            "goal_rate",
-            "off_road",
-            "veh_veh_collision",
-        ],
-    )
+    df = pd.DataFrame()
 
     # Run
-    obs_dict = env.reset()
-    agent_ids = list(obs_dict.keys())
-    veh_id_to_idx = {veh_id: idx for idx, veh_id in enumerate(agent_ids)}
-    dead_agent_ids = []
-    last_info_dicts = {agent_id: {} for agent_id in agent_ids}
-    goal_achieved = np.zeros(len(agent_ids))
-    off_road = np.zeros(len(agent_ids))
-    veh_veh_coll = np.zeros(len(agent_ids))
-
     for _ in tqdm(range(num_episodes)):
+        # Reset to a new scene
+        obs_dict = env.reset()
+
+        agent_ids = list(obs_dict.keys())
+        dead_agent_ids = []
+        veh_id_to_idx = {veh_id: idx for idx, veh_id in enumerate(agent_ids)}
+        last_info_dicts = {agent_id: {} for agent_id in agent_ids}
+
+        logging.debug(f"Controlling {agent_ids} vehicles in {env.file} \n")
+
+        # Storage
+        goal_achieved = np.zeros(len(agent_ids))
+        off_road = np.zeros(len(agent_ids))
+        veh_veh_coll = np.zeros(len(agent_ids))
+
         logging.debug(f"scene: {env.file} -- veh_id = {agent_ids} --")
 
         for time_step in range(env_config.episode_length):
+            logging.debug(f"time_step: {time_step}")
+
             # Get actions
             action_dict = {}
 
@@ -94,7 +95,7 @@ def evaluate_policy(
 
                     # Get action
                     action, _ = policy.predict(obs, deterministic=deterministic)
-                    action_dict[agent_id] = int(action)
+                    action_dict[agent_id] = int(action[0])
 
             elif mode == "policy" and policy is None:
                 raise ValueError("Policy is not given. Please provide a policy.")
@@ -157,37 +158,60 @@ def evaluate_policy(
                     # Store agents' last info dict
                     last_info_dicts[agent_id] = info_dict[agent_id].copy()
 
-            if done_dict["__all__"]:
-                # Update df
+            if done_dict["__all__"]:  # If all agents are done
                 for agent_id in agent_ids:
                     agend_idx = veh_id_to_idx[agent_id]
                     veh_veh_coll[agend_idx] += last_info_dicts[agent_id]["veh_veh_collision"] * 1
                     off_road[agend_idx] += last_info_dicts[agent_id]["veh_edge_collision"] * 1
                     goal_achieved[agend_idx] += last_info_dicts[agent_id]["goal_achieved"] * 1
 
-                if scene_path_mapping is not None:
-                    if env.file in scene_path_mapping:
-                        df_scene_i = pd.DataFrame(
-                            {
-                                "scene_id": env.file,
-                                "veh_id": agent_ids,
-                                "goal_rate": goal_achieved,
-                                "off_road": off_road,
-                                "veh_veh_collision": veh_veh_coll,
-                                "num_total_vehs": scene_path_mapping[env.file]["num_agents"],
-                                "num_controlled_vehs": len(agent_ids),
-                                "num_int_paths": scene_path_mapping[env.file]["intersecting_paths"],
-                            },
-                            index=list(range(len(agent_ids))),
-                        )
-                    else:
-                        raise ValueError(f"Scene {env.file} not found in scene_path_mapping")
+                    logging.info(f"Goal achieved: {last_info_dicts[agent_id]['goal_achieved']}")
 
-                else:
+                # Get scene info
+                if scene_path_mapping is not None:
+                    if str(env.file) in scene_path_mapping.keys():
+                        control_veh_int_paths = np.zeros(len(agent_ids))
+
+                        # Obtain the number of intersecting paths for every vehicle
+                        for agent_id in agent_ids:
+                            if agent_id in scene_path_mapping[str(env.file)]["veh_id"]:
+                                agent_idx = veh_id_to_idx[agent_id]
+                                control_veh_idx = scene_path_mapping[str(env.file)]["veh_id"].index(agent_id)
+                                total_int_paths_in_scene = (
+                                    sum(scene_path_mapping[str(env.file)]["intersecting_paths"]) / 2
+                                )
+                                control_veh_int_path = scene_path_mapping[str(env.file)]["intersecting_paths"][
+                                    control_veh_idx
+                                ]
+                                total_vehs_in_scene = len(scene_path_mapping[str(env.file)]["veh_id"])
+
+                                control_veh_int_paths[agent_idx] = control_veh_int_path
+
+                    else:
+                        control_veh_int_paths = np.zeros(len(agent_ids))
+                        total_int_paths_in_scene = 0
+                        logging.info(f"Scene {env.file} not found in scene_path_mapping")
+
                     df_scene_i = pd.DataFrame(
                         {
                             "scene_id": env.file,
                             "veh_id": agent_ids,
+                            "num_total_vehs": total_vehs_in_scene,
+                            "veh_int_paths": control_veh_int_paths,
+                            "tot_int_paths": total_int_paths_in_scene,
+                            "goal_rate": goal_achieved,
+                            "off_road": off_road,
+                            "veh_veh_collision": veh_veh_coll,
+                        },
+                        index=list(range(len(agent_ids))),
+                    )
+
+                else:  # If we don't have any scene-specific info
+                    df_scene_i = pd.DataFrame(
+                        {
+                            "scene_id": env.file,
+                            "veh_id": agent_ids,
+                            "num_total_vehs": len(agent_ids),
                             "goal_rate": goal_achieved,
                             "off_road": off_road,
                             "veh_veh_collision": veh_veh_coll,
@@ -198,22 +222,14 @@ def evaluate_policy(
                 # Append to df
                 df = pd.concat([df, df_scene_i], ignore_index=True)
 
-                # Reset
-                obs_dict = env.reset()
-                agent_ids = list(obs_dict.keys())
-                veh_id_to_idx = {veh_id: idx for idx, veh_id in enumerate(agent_ids)}
-                dead_agent_ids = []
-                last_info_dicts = {agent_id: {} for agent_id in agent_ids}
-                goal_achieved = np.zeros(len(agent_ids))
-                off_road = np.zeros(len(agent_ids))
-                veh_veh_coll = np.zeros(len(agent_ids))
-
                 break  # Proceed to next scene
 
     return df
 
 
 if __name__ == "__main__":
+    TRAIN_DATA_PATH = "data_full/train"
+
     # Global setting
     logger = logging.getLogger()
     logging.basicConfig(format="%(message)s")
@@ -221,11 +237,14 @@ if __name__ == "__main__":
 
     env_config = load_config("env_config")
 
-    df_disc_expert_replay = evaluate_policy(
+    df_expert_replay = evaluate_policy(
         env_config=env_config,
-        data_path=env_config.data_path,
-        mode="disc_expert_replay",
-        select_from_k_scenes=100,
-        num_episodes=100,
-        controlled_agents=2,
+        controlled_agents=1,
+        data_path=TRAIN_DATA_PATH,
+        mode="cont_expert_act_replay",
+        select_from_k_scenes=1000,
+        num_episodes=1000,
     )
+
+    # with open("invalid_train", "wb") as fp:   #Pickling
+    #     pickle.dump(inval_scenes, fp)

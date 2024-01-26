@@ -3,6 +3,7 @@ import logging
 import os
 import pickle
 from itertools import combinations
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +13,7 @@ from tqdm import tqdm
 
 from nocturne.envs.base_env import BaseEnv
 from utils.config import load_config
+from utils.string_utils import datetime_to_str
 
 
 def step_through_scene(env, mode, filename=None, num_steps=90):
@@ -20,14 +22,15 @@ def step_through_scene(env, mode, filename=None, num_steps=90):
         try:
             obs_dict = env.reset()
         except ValueError:
-            return np.zeros((1, num_steps, 2))  # Return empty array if no agents
+            return np.zeros((1, num_steps, 2)), {} # Return empty array if no agents
     else:
         try:
             obs_dict = env.reset(filename)
         except ValueError:
-            return np.zeros((1, num_steps, 2))  # Return empty array if no agents
+            return np.zeros((1, num_steps, 2)), {}  # Return empty array if no agents
 
     num_agents = len(env.controlled_vehicles)
+    
     # Storage
     agent_positions = np.full(fill_value=np.nan, shape=(num_agents, num_steps, 2))
     agent_speed = np.full(fill_value=np.nan, shape=(num_agents, num_steps))
@@ -83,7 +86,7 @@ def step_through_scene(env, mode, filename=None, num_steps=90):
                 veh_veh_collision[agent_idx] += last_info_dicts[agent_id]["veh_veh_collision"]
             break
 
-    return agent_positions
+    return agent_positions, agent_id_to_idx_dict
 
 
 def plot_lines(line1, line2, title):
@@ -98,71 +101,90 @@ def create_intersecting_path_dict(env, traffic_scenes, save_as="int_paths"):
     scene_intersecting_paths_dict = {}
 
     for traffic_scene in tqdm(traffic_scenes):
-        expert_trajectories = step_through_scene(env, filename=traffic_scene, mode="expert")
+        expert_trajectories, vehicle_id_dict = step_through_scene(env, filename=traffic_scene, mode="expert")
+        
+        if bool(vehicle_id_dict) is False:
+            # Skip scene if it has no agents
+            continue
+        
+        else:
+            veh_id_to_intersecting_paths_dict = {veh_id: 0 for veh_id in vehicle_id_dict.keys()}
+            iterable = list(vehicle_id_dict.keys())
+            n = 2 # Pairs of two
 
-        num_vehicles = expert_trajectories.shape[0]
-        iterable = list(range(num_vehicles))
-        n = 2
+            # Get all possible combinations
+            veh_combinations = list(combinations(iterable, n))
+            num_intersecting_paths = 0
 
-        # Get all possible combinations
-        veh_combinations = list(combinations(iterable, n))
-        num_intersecting_paths = 0
+            for veh_i, veh_j in veh_combinations:
+                veh_i_idx = vehicle_id_dict[veh_i]
+                veh_j_idx = vehicle_id_dict[veh_j]
+                path_veh_i = expert_trajectories[veh_i_idx, :, :]
+                path_veh_j = expert_trajectories[veh_j_idx, :, :]
 
-        for veh_i, veh_j in veh_combinations:
-            path_veh_i = expert_trajectories[veh_i, :, :]
-            path_veh_j = expert_trajectories[veh_j, :, :]
-
-            # Filter out nans
-            nonnan_ids = np.logical_not(
-                np.logical_or(
-                    np.isnan(path_veh_i),
-                    np.isnan(path_veh_j),
+                # Filter out nans
+                nonnan_ids = np.logical_not(
+                    np.logical_or(
+                        np.isnan(path_veh_i),
+                        np.isnan(path_veh_j),
+                    )
                 )
-            )
-            new_dim = int(len(path_veh_i[nonnan_ids]) // 2)
+                new_dim = int(len(path_veh_i[nonnan_ids]) // 2)
 
-            if nonnan_ids.sum() > 2:
-                # Convert to line objects
-                line1 = LineString(path_veh_i[nonnan_ids].reshape(new_dim, 2))
-                line2 = LineString(path_veh_j[nonnan_ids].reshape(new_dim, 2))
+                if nonnan_ids.sum() > 2:
+                    # Convert to line objects
+                    line1 = LineString(path_veh_i[nonnan_ids].reshape(new_dim, 2))
+                    line2 = LineString(path_veh_j[nonnan_ids].reshape(new_dim, 2))
 
-            title = "no"
-            if line1.intersects(line2):
-                num_intersecting_paths += 1
-                title = "intersect!"
-                # print('lines_intersect!')
-                # plot_lines(line1, line2, title=title)
+                title = "no"
+                if line1.intersects(line2):
+                    # Increment number of intersecting paths for vehicle pair
+                    veh_id_to_intersecting_paths_dict[veh_i] += 1
+                    veh_id_to_intersecting_paths_dict[veh_j] += 1
+                    
+                    # Increment total intersecting paths in scene
+                    num_intersecting_paths += 1
+                    
+                    title = "intersect!"
+                    # print('lines_intersect!')
+                    # plot_lines(line1, line2, title=title)
 
-        # Store scene information
-        scene_intersecting_paths_dict[traffic_scene] = {}
-        scene_intersecting_paths_dict[traffic_scene]["intersecting_paths"] = num_intersecting_paths
-        scene_intersecting_paths_dict[traffic_scene]["num_agents"] = num_vehicles
-
-        # print(f'scene: {env.file} has {num_intersecting_paths} intersecting path(s)')
-
-    with open(f"{save_as}.pkl", "wb") as f:
+            # Store scene information
+            scene_intersecting_paths_dict[traffic_scene] = {}
+            scene_intersecting_paths_dict[traffic_scene]["veh_id"] = list(veh_id_to_intersecting_paths_dict.keys())
+            scene_intersecting_paths_dict[traffic_scene]["intersecting_paths"] = list(veh_id_to_intersecting_paths_dict.values())
+            
+    # Save model
+    datetime_ = datetime_to_str(dt=datetime.now())
+    with open(f"{save_as}_{datetime_}.pkl", "wb") as f:
         pickle.dump(scene_intersecting_paths_dict, f)
-
     return pd.DataFrame(scene_intersecting_paths_dict)
 
 
 if __name__ == "__main__":
     logging.basicConfig()
-    logging.getLogger().setLevel(logging.DEBUG)
-
+    logging.getLogger().setLevel(logging.INFO)
+    
+    MAX_SCENES = 20_000
+    
+    # Load config
     env_config = load_config("env_config")
-    exp_config = load_config("exp_config")
-
-    MAX_FILES = 2
-
-    # Train
+    # Set data path for which we want to obtain the number of intersecting paths
+    env_config.data_path = "data_full/train/"
+    
+    # Scenes on which to evaluate the models
+    # Make sure file order is fixed so that we evaluate on the same files used for training
     file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
-    eval_files = sorted([os.path.basename(file) for file in file_paths])[:MAX_FILES]
-
+    eval_files = sorted([os.path.basename(file) for file in file_paths])[:MAX_SCENES]
+    
+    logging.info(f'num_scenes: {len(eval_files)}')
+    
+    # Make env
     env = BaseEnv(env_config)
-
-    agent_positions, agent_speed, goal_achieved, veh_edge_collision, veh_veh_collision = _step_through_scene(
-        env, eval_files, mode="expert"
+    
+    # Create dictionary with number of intersecting paths per scene and agent id
+    df_intersect = create_intersecting_path_dict(
+        env=env, 
+        traffic_scenes=eval_files, 
+        save_as=f'valid_{MAX_SCENES}'
     )
-
-    print("DOne")

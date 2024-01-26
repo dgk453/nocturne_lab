@@ -1,3 +1,4 @@
+"""Run behavioral cloning on Waymo Open Dataset"""
 import glob
 import logging
 import os
@@ -12,11 +13,8 @@ from torch.utils.data import DataLoader
 
 import wandb
 from utils.config import load_config
-from utils.eval import EvaluatePolicy
-from utils.evaluation import evaluate_policy
 from utils.imitation_learning.waymo_iterator import TrajectoryIterator
-from utils.string_utils import date_to_str, datetime_to_str
-from utils.wrappers import LightNocturneEnvWrapper
+from utils.string_utils import datetime_to_str
 
 
 class CustomFeedForwardPolicy(policies.ActorCriticPolicy):
@@ -41,7 +39,7 @@ device = "cpu"
 
 
 if __name__ == "__main__":
-    NUM_TRAIN_FILES = 100
+    NUM_TRAIN_FILES = 1000
     MAX_EVAL_FILES = 5
 
     # Create run
@@ -61,14 +59,14 @@ if __name__ == "__main__":
     env_config.num_files = NUM_TRAIN_FILES
 
     # Change action space
-    # env_config.accel_discretization = 9
-    # env_config.accel_lower_bound = -5
-    # env_config.accel_upper_bound = 5
-    # env_config.steering_lower_bound = -0.7 # steer right
-    # env_config.steering_upper_bound = 0.7 # steer left
-    # env_config.steering_discretization = 31
+    env_config.accel_discretization = 9
+    env_config.accel_lower_bound = -5.0
+    env_config.accel_upper_bound = 5.0
+    env_config.steering_lower_bound = -1.5  # steer right
+    env_config.steering_upper_bound = 1.5  # steer left
+    env_config.steering_discretization = 11
 
-    logging.info(f"(1/4) Create iterator...")
+    logging.info("(1/4) Create iterator...")
 
     # Create iterator
     waymo_iterator = TrajectoryIterator(
@@ -78,7 +76,7 @@ if __name__ == "__main__":
         file_limit=env_config.num_files,
     )
 
-    logging.info(f"(2/4) Generating dataset from traffic scenes...")
+    logging.info("(2/4) Generating dataset from traffic scenes...")
 
     # Rollout to get obs-act-obs-done trajectories
     rollouts = next(
@@ -119,51 +117,20 @@ if __name__ == "__main__":
     )
 
     logging.info(f"IL policy: \n{bc_trainer.policy}")
-    logging.info(f"(3/4) Training...")
+    logging.info("(3/4) Training...")
 
     # Train
     bc_trainer.train(
         n_epochs=bc_config.n_epochs,
     )
 
-    logging.info(f"(4/4) Evaluate...")
+    logging.info("(4/4) Save...")
 
     # Evaluate, get scores
     # Scenes on which to evaluate the models
     # Make sure file order is fixed so that we evaluate on the same files used for training
     train_file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
     train_eval_files = sorted([os.path.basename(file) for file in train_file_paths])[:NUM_TRAIN_FILES]
-
-    # Evaluate policy
-    evaluator = EvaluatePolicy(
-        env_config=env_config,
-        exp_config=exp_config,
-        policy=bc_trainer.policy,
-        eval_files=train_eval_files,
-        log_to_wandb=False,
-        deterministic=True,
-        reg_coef=0.0,
-        return_trajectories=True,
-        single_agent=True,
-    )
-
-    df_il_res, df_il_trajs = evaluator._get_scores()
-
-    print(df_il_res[["goal_rate", "veh_edge_cr", "veh_veh_cr", "act_acc"]].mean())
-
-    # # Create evaluation env
-    # env = LightNocturneEnvWrapper(env_config)
-    # eval_files = env.files[:MAX_EVAL_FILES]
-    # reward_after_training, _ = evaluate_policy(
-    #     model=bc_trainer.policy,
-    #     env=LightNocturneEnvWrapper(env_config),
-    #     n_steps_per_episode=env_config.episode_length,
-    #     n_eval_episodes=1,
-    #     eval_files=eval_files,
-    #     video_config=video_config,
-    #     video_caption=f"AFTER training ({bc_config.n_epochs} epochs)",
-    #     render=True,
-    # )
 
     if bc_config.save_model:
         # Save model
