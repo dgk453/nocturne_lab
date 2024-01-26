@@ -1,5 +1,5 @@
 project: hr_rl_exp
-group: S100
+group: randomize_goals
 env_id: Nocturne
 seed: 42
 track_wandb: true
@@ -16,11 +16,11 @@ wandb:
 ma_callback:
   save_model: true
   save_video: true
-  model_save_freq: 200 # In iterations (one iter ~ (num_agents x n_steps))
+  model_save_freq: 250 # In iterations (one iter ~ (num_agents x n_steps))
   record_n_scenes: 10 # Number of different scenes to render
-  video_save_freq: 500 # Make a video every k iterations (100 iters ~ 1M steps)
+  video_save_freq: 2000 # Make a video every k iterations (100 iters ~ 1M steps)
   video_deterministic: true
-  eval_freq: 500 # Currently disabled
+  eval_freq: 100 # Evaluate full RL task in deterministic mode (turn off intermediate goals)
 
 ppo:
   learning_rate: 3e-4
@@ -30,12 +30,12 @@ ppo:
   vf_coef: 0.5 # Default in SB3 is 0.5
 
 learn:
-  total_timesteps: 2_000_000
+  total_timesteps: 10_000_000
   progress_bar: false
 
 # human-regularized RL
 reg_weight: 0.0
-human_policy_path: models/il/human_policy_S1000_01_12_11_11.pt
+human_policy_path: models/il/human_policy_D99_S1000_01_25_14_48.pt
 
 # Model arch
 model_config:
