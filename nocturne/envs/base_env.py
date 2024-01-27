@@ -37,6 +37,7 @@ class CollisionType(Enum):
     VEHICLE_VEHICLE = 1
     VEHICLE_EDGE = 2
 
+
 class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
     """Nocturne base Gym environment."""
 
@@ -333,19 +334,19 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
 
             self.simulation = Simulation(str(self.config.data_path / self.file), config=self.config.scenario)
             self.scenario = self.simulation.getScenario()
-            
+
             # Get controlled vehicles
-            if use_av_only: # Control only the AVs
+            if use_av_only:  # Control only the AVs
                 self.controlled_vehicles = []
                 all_vehs = self.scenario.getVehicles()
                 for vehicle in all_vehs:
                     if vehicle.is_av:
                         self.controlled_vehicles.append(vehicle)
-                    else: # Put in expert control mode
+                    else:  # Put in expert control mode
                         vehicle.expert_control = True
                 if len(self.controlled_vehicles) == 0:
-                    raise ValueError(f"Scene {str(self.file)} has no AV vehicles in. Skip")            
-    
+                    raise ValueError(f"Scene {self.file!s} has no AV vehicles in. Skip")
+
             #####################################################################
             #   Construct context dictionary of observations that can be used to
             #   warm up policies by stepping all vehicles as experts.
@@ -395,7 +396,7 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             ############################################
             #    Pick out the vehicles that we are controlling
             ############################################
-            if not use_av_only: # No restrictions on which vechicles can be controlled  
+            if not use_av_only:  # No restrictions on which vechicles can be controlled
                 # Ensure that no more than max_num_vehicles are controlled
                 temp_vehicles = np.random.permutation(self.scenario.getObjectsThatMoved())
                 curr_index = 0
@@ -428,7 +429,9 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
                         and curr_index < self.config.max_num_vehicles
                     ):
                         self.controlled_vehicles.append(vehicle)
-                        logging.debug(f"updated self.controlled_vehicles: {[veh.id for veh in self.controlled_vehicles]}")
+                        logging.debug(
+                            f"updated self.controlled_vehicles: {[veh.id for veh in self.controlled_vehicles]}"
+                        )
                         curr_index += 1
                     else:
                         vehicle.expert_control = True
@@ -807,15 +810,15 @@ if __name__ == "__main__":
     env_config = load_config("env_config")
     env_config.data_path = "data_new/train_no_tl"
     scene_name = "tfrecord-00000-of-01000_29.json"
-    
+
     # Initialize an environment
     env = BaseEnv(config=env_config)
 
     obs_dict = env.reset(
-       filename=scene_name,
-       use_av_only=True,
+        filename=scene_name,
+        use_av_only=True,
     )
-   
+
     # Get info
     agent_ids = [agent_id for agent_id in obs_dict.keys()]
     veh_objects = {agent.id: agent for agent in env.controlled_vehicles}
