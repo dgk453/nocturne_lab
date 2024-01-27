@@ -562,11 +562,12 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
       (cur_speeds[timestamp + 1] - cur_speeds[timestamp]) / expert_dt_;
   // Calculate the updated yaw using the velocity angle
   float real_new_yaw = std::atan2(cur_velocities[timestamp + 1].y(),
-                                        cur_velocities[timestamp + 1].x());
+                                  cur_velocities[timestamp + 1].x());
   const float delta_yaw = geometry::utils::AngleSub(real_new_yaw,
-                                            cur_headings[timestamp]);
+                                                    cur_headings[timestamp]);
   // Calculate steering.
-  float steering = delta_yaw / (cur_speeds[timestamp] * expert_dt_ + 0.5 * accel * pow(expert_dt_, 2));
+  float steering = delta_yaw / (cur_speeds[timestamp] * expert_dt_ +
+                                0.5 * acceleration * pow(expert_dt_, 2));
   if (cur_speeds[timestamp] < 0.6) {
     steering = 0.0;
   }
@@ -904,7 +905,7 @@ void Scenario::LoadObjects(const json& objects_json) {
     const auto& obj_velocity = obj["velocity"];
     const auto& obj_valid = obj["valid"];
     const int64_t trajectory_length = obj_position.size();
-    const bool is_av = obj["is_av"].get<int>() != 0;
+    const bool is_av = obj["is_av"].template get<int>();
 
     std::vector<geometry::Vector2D> cur_trajectory;
     std::vector<float> cur_headings;
