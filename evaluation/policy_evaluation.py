@@ -1,5 +1,7 @@
 """Evaluate a policy on a set of scenes."""
+import glob
 import logging
+import os
 
 import numpy as np
 import pandas as pd
@@ -20,6 +22,8 @@ def evaluate_policy(
     scene_path_mapping=None,
     policy=None,
     deterministic=True,
+    traffic_files=None,
+    use_av_only=False,
 ):
     """Evaluate a policy on a set of scenes.
 
@@ -35,7 +39,7 @@ def evaluate_policy(
         data_path: Path to data.
         select_from_k_scenes: Number of scenes to select from.
         num_episodes: Number of episodes to run; how many times to reset the environment to a new scene.
-        scene_path_mapping (dict, optional): Mapping from scene to dict with the number of intersecting 
+        scene_path_mapping (dict, optional): Mapping from scene to dict with the number of intersecting
             paths of that scene.
         policy (optional): Policy to evaluate.
         deterministic (optional): Whether to use a deterministic policy.
@@ -65,8 +69,15 @@ def evaluate_policy(
 
     # Run
     for _ in tqdm(range(num_episodes)):
-        # Reset to a new scene
-        obs_dict = env.reset()
+        if traffic_files is not None:
+            # Reset to a new scene
+            obs_dict = env.reset(
+                filename=np.random.choice(traffic_files),
+                use_av_only=use_av_only,
+            )
+
+        else:
+            obs_dict = env.reset()
 
         agent_ids = list(obs_dict.keys())
         dead_agent_ids = []
@@ -228,23 +239,28 @@ def evaluate_policy(
 
 
 if __name__ == "__main__":
-    TRAIN_DATA_PATH = "data_full/train"
-
-    # Global setting
-    logger = logging.getLogger()
-    logging.basicConfig(format="%(message)s")
-    logger.setLevel("INFO")
-
     env_config = load_config("env_config")
+
+    # Set data path to new scenes
+    env_config.data_path = "data_new/train_no_tl"
+
+    train_file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
+    files = sorted([os.path.basename(file) for file in train_file_paths])
+
+    logging.info(f"Using {len(files)} scenes")
 
     df_expert_replay = evaluate_policy(
         env_config=env_config,
-        controlled_agents=1,
-        data_path=TRAIN_DATA_PATH,
+        controlled_agents=500,
+        data_path=env_config.data_path,
+        traffic_files=files,
         mode="cont_expert_act_replay",
         select_from_k_scenes=1000,
-        num_episodes=1000,
+        num_episodes=100,
+        use_av_only=True,
     )
+
+    print(df_expert_replay[["goal_rate", "off_road", "veh_veh_collision"]].mean())
 
     # with open("invalid_train", "wb") as fp:   #Pickling
     #     pickle.dump(inval_scenes, fp)
