@@ -37,7 +37,6 @@ class CollisionType(Enum):
     VEHICLE_VEHICLE = 1
     VEHICLE_EDGE = 2
 
-
 class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
     """Nocturne base Gym environment."""
 
@@ -298,6 +297,7 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
         self,
         filename=None,
         psr_dict=None,
+        use_av_only=False,
     ) -> Dict[int, ObsType]:
         """Reset the environment.
 
@@ -333,7 +333,19 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
 
             self.simulation = Simulation(str(self.config.data_path / self.file), config=self.config.scenario)
             self.scenario = self.simulation.getScenario()
-
+            
+            # Get controlled vehicles
+            if use_av_only: # Control only the AVs
+                self.controlled_vehicles = []
+                all_vehs = self.scenario.getVehicles()
+                for vehicle in all_vehs:
+                    if vehicle.is_av:
+                        self.controlled_vehicles.append(vehicle)
+                    else: # Put in expert control mode
+                        vehicle.expert_control = True
+                if len(self.controlled_vehicles) == 0:
+                    raise ValueError(f"Scene {str(self.file)} has no AV vehicles in. Skip")            
+    
             #####################################################################
             #   Construct context dictionary of observations that can be used to
             #   warm up policies by stepping all vehicles as experts.
@@ -351,7 +363,7 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
                     [dead_feat for _ in range(self.config.scenario.context_length)],
                     maxlen=self.config.scenario.context_length,
                 )
-                for veh in self.scenario.getObjectsThatMoved()
+                for veh in self.scenario.getVehicles()
             }
             for veh in self.scenario.getObjectsThatMoved():
                 veh.expert_control = True
@@ -383,42 +395,43 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             ############################################
             #    Pick out the vehicles that we are controlling
             ############################################
-            # Ensure that no more than max_num_vehicles are controlled
-            temp_vehicles = np.random.permutation(self.scenario.getObjectsThatMoved())
-            curr_index = 0
-            self.controlled_vehicles = []
-            logging.debug(f"(IN RESET) selecting vehicles to control, current list: {self.controlled_vehicles}")
+            if not use_av_only: # No restrictions on which vechicles can be controlled  
+                # Ensure that no more than max_num_vehicles are controlled
+                temp_vehicles = np.random.permutation(self.scenario.getObjectsThatMoved())
+                curr_index = 0
+                self.controlled_vehicles = []
+                logging.debug(f"(IN RESET) selecting vehicles to control, current list: {self.controlled_vehicles}")
 
-            for vehicle in temp_vehicles:
-                logging.debug(f"looking at veh_id {vehicle.id}...")
+                for vehicle in temp_vehicles:
+                    logging.debug(f"looking at veh_id {vehicle.id}...")
 
-                # Remove vehicles that have invalid positions
-                veh_at_invalid_pos = np.isclose(
-                    vehicle.position.x,
-                    self.config.scenario.invalid_position,
-                )
+                    # Remove vehicles that have invalid positions
+                    veh_at_invalid_pos = np.isclose(
+                        vehicle.position.x,
+                        self.config.scenario.invalid_position,
+                    )
 
-                # Exclude vehicles with invalid goal positions
-                veh_has_invalid_goal_pos = np.isclose(
-                    vehicle.getGoalPosition().x, self.config.scenario.invalid_position
-                ) or np.isclose(vehicle.getGoalPosition().y, self.config.scenario.invalid_position)
+                    # Exclude vehicles with invalid goal positions
+                    veh_has_invalid_goal_pos = np.isclose(
+                        vehicle.getGoalPosition().x, self.config.scenario.invalid_position
+                    ) or np.isclose(vehicle.getGoalPosition().y, self.config.scenario.invalid_position)
 
-                if veh_at_invalid_pos or veh_has_invalid_goal_pos:
-                    self.scenario.removeVehicle(vehicle)
-                    logging.debug(f"veh_id {vehicle.id} is INVALID!")
+                    if veh_at_invalid_pos or veh_has_invalid_goal_pos:
+                        self.scenario.removeVehicle(vehicle)
+                        logging.debug(f"veh_id {vehicle.id} is INVALID!")
 
-                # Otherwise the vehicle is valid and we add it to the list of controlled vehicles
-                if (
-                    not vehicle.expert_control
-                    and not veh_at_invalid_pos
-                    and not veh_has_invalid_goal_pos
-                    and curr_index < self.config.max_num_vehicles
-                ):
-                    self.controlled_vehicles.append(vehicle)
-                    logging.debug(f"updated self.controlled_vehicles: {[veh.id for veh in self.controlled_vehicles]}")
-                    curr_index += 1
-                else:
-                    vehicle.expert_control = True
+                    # Otherwise the vehicle is valid and we add it to the list of controlled vehicles
+                    if (
+                        not vehicle.expert_control
+                        and not veh_at_invalid_pos
+                        and not veh_has_invalid_goal_pos
+                        and curr_index < self.config.max_num_vehicles
+                    ):
+                        self.controlled_vehicles.append(vehicle)
+                        logging.debug(f"updated self.controlled_vehicles: {[veh.id for veh in self.controlled_vehicles]}")
+                        curr_index += 1
+                    else:
+                        vehicle.expert_control = True
 
             self.all_vehicle_ids = {veh.getID(): veh for veh in self.controlled_vehicles}
 
@@ -791,20 +804,24 @@ def _position_as_array(position: Vector2D) -> np.ndarray:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    # Load environment variables and config
     env_config = load_config("env_config")
-    env_config.max_num_vehicles = 1
+    env_config.data_path = "data_new/train_no_tl"
+    scene_name = "tfrecord-00000-of-01000_29.json"
+    
     # Initialize an environment
     env = BaseEnv(config=env_config)
-    obs_dict = env.reset()
 
+    obs_dict = env.reset(
+       filename=scene_name,
+       use_av_only=True,
+    )
+   
     # Get info
     agent_ids = [agent_id for agent_id in obs_dict.keys()]
     veh_objects = {agent.id: agent for agent in env.controlled_vehicles}
     dead_agent_ids = []
 
-    num_total = 10_000
-    for _ in range(num_total):
+    for timestep in range(80):
         # Sample actions
         action_dict = {agent_id: env.action_space.sample() for agent_id in agent_ids if agent_id not in dead_agent_ids}
 
