@@ -84,7 +84,8 @@ class Object : public ObjectBase {
 
   float speed() const { return velocity_.Norm(); }
   const geometry::Vector2D& velocity() const { return velocity_; }
-  void set_velocity(geometry::Vector2D velocity) { velocity_ = ClipSpeed(velocity_); }
+  // TODO(ev) put ClipSpeed back
+  void set_velocity(geometry::Vector2D velocity) { velocity_ = ClipSpeed(velocity); }
 
   const geometry::Vector2D& target_position() const { return target_position_; }
   void set_target_position(const geometry::Vector2D& target_position) {
@@ -142,7 +143,7 @@ class Object : public ObjectBase {
     return std::sqrt(length_ * length_ + width_ * width_) * 0.5f;
   }
 
-  geometry::Vector2D Velocity() const {
+  const geometry::Vector2D Velocity() const {
     return velocity_;
   }
 

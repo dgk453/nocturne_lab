@@ -269,6 +269,16 @@ void Scenario::Step(float dt) {
     object->ResetCollision();
     if (!object->expert_control()) {
       object->Step(dt);
+      // print the object speed and heading after the update and check
+      // that it matches the expert data 
+      // only print for object 2
+      // if (object->id() == 2) {
+      // std::cout << "checking the object speed and heading after step " << std::endl;
+      // std::cout << "[C++] object speed " << object->speed() << std::endl;
+      // std::cout << "[C++] object heading " << object->heading() << std::endl;
+      // std::cout << "[C++] expert speed " << expert_speeds_.at(object->id()).at(current_time_) << std::endl;
+      // std::cout << "[C++] expert heading " << expert_headings_.at(object->id()).at(current_time_) << std::endl;
+      // }
     } else {
       const int64_t obj_id = object->id();
       object->set_position(expert_trajectories_.at(obj_id).at(current_time_));
@@ -558,11 +568,13 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
     return std::nullopt;
   }
 
-  std::cout << "timestamp" << timestamp << std::endl;
-  std::cout << "[C++] expert velocity" << cur_velocities[timestamp].x() << ", " << cur_velocities[timestamp].y() << std::endl;
-  std::cout << "[C++] agent velocity" << obj.Velocity().x() << ", " << obj.Velocity().y() << std::endl;
-  std::cout << "[C++] expert speed" << cur_speeds[timestamp] << std::endl;
-  std::cout << "[C++] agent speed" << obj.speed() << std::endl;
+  // std::cout << "timestamp" << timestamp << std::endl;
+  // std::cout << "[C++] expert velocity" << cur_velocities[timestamp].x() << ", " << cur_velocities[timestamp].y() << std::endl;
+  // std::cout << "[C++] agent velocity" << obj.Velocity().x() << ", " << obj.Velocity().y() << std::endl;
+  // std::cout << "[C++] expert speed" << cur_speeds[timestamp] << std::endl;
+  // std::cout << "[C++] agent speed" << obj.speed() << std::endl;
+  // std::cout << "[C++] expert headings" << cur_headings[timestamp] << std::endl;
+  // std::cout << "[C++] agent headings" << obj.heading() << std::endl;
   // compute acceleration
   // a_t = (v_{t+1} - v_t) / dt
   const float acceleration =
@@ -572,7 +584,7 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
   // Calculate the updated yaw using the velocity angle
   float real_new_yaw = std::atan2(cur_velocities[timestamp + 1].y(),
                                   cur_velocities[timestamp + 1].x());
-  // TODO: @ev Update real_new_yaw
+  // TODO: @ev should we use real_new_yaw?
   if (cur_speeds[timestamp + 1] < 0.6) {
     real_new_yaw = new_yaw;
   }

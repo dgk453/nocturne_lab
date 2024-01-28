@@ -264,13 +264,13 @@ if __name__ == "__main__":
         controlled_agents=500,
         data_path=env_config.data_path,
         traffic_files=files,
-        mode="expert_replay",
+        mode="cont_expert_act_replay",
         select_from_k_scenes=1000,
         num_episodes=100,
         use_av_only=True,
     )
     
     logging.info(f'--- Results: EXPERT-TRAJECTORY ACTIONS ---')
-    print(df_expert_traj[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    print(df_expert_replay[["goal_rate", "off_road", "veh_veh_collision"]].mean())
 
 
