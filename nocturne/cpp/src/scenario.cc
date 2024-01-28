@@ -558,6 +558,11 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
     return std::nullopt;
   }
 
+  // std::cout << "timestamp" << timestamp << std::endl;
+  // std::cout << "[C++] expert velocity" << cur_velocities[timestamp].x() << ", " << cur_velocities[timestamp].y() << std::endl;
+  // std::cout << "[C++] agent velocity" << obj.Velocity().x() << ", " << obj.Velocity().y() << std::endl;
+  // std::cout << "[C++] expert speed" << cur_speeds[timestamp] << std::endl;
+  // std::cout << "[C++] agent speed" << obj.speed() << std::endl;
   // compute acceleration
   // a_t = (v_{t+1} - v_t) / dt
   const float acceleration =
