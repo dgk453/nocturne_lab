@@ -279,6 +279,8 @@ void Scenario::Step(float dt) {
   for (auto& object : traffic_lights_) {
     object->set_current_time(current_time_);
   }
+  std::cout << "[C++] t = " << current_time_ << std::endl;
+  std::cout << "[C++] expert heading" << expert_headings_.at(22).at(current_time_) << std::endl;
 
   // update the vehicle bvh
   object_bvh_.Reset(objects_);
@@ -563,6 +565,11 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
   // Calculate the updated yaw using the velocity angle
   float real_new_yaw = std::atan2(cur_velocities[timestamp + 1].y(),
                                   cur_velocities[timestamp + 1].x());
+  // TODO: @ev Update real_new_yaw
+  // if (cur_speeds[timestamp + 1] < 0.6) {
+  //   real_new_yaw = new_yaw;
+  // }
+  // Compute delta yaw
   const float delta_yaw = geometry::utils::AngleSub(real_new_yaw,
                                                     cur_headings[timestamp]);
   // Calculate steering.
@@ -615,7 +622,6 @@ std::optional<float> Scenario::ExpertHeadingShift(const Object& obj,
   // a_t = (v_{t+1} - v_t) / dt
   float heading_shift = geometry::utils::AngleSub(cur_heading[timestamp + 1],
                                                   cur_heading[timestamp]);
-
   // return action
   return heading_shift;
 }
