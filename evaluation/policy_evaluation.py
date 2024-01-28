@@ -170,6 +170,7 @@ def evaluate_policy(
                     last_info_dicts[agent_id] = info_dict[agent_id].copy()
 
             if done_dict["__all__"]:  # If all agents are done
+                # import ipdb; ipdb.set_trace()
                 for agent_id in agent_ids:
                     agend_idx = veh_id_to_idx[agent_id]
                     veh_veh_coll[agend_idx] += last_info_dicts[agent_id]["veh_veh_collision"] * 1
