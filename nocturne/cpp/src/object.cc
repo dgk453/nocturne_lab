@@ -141,7 +141,7 @@ void Object::KinematicBicycleStep(float dt) {
   // TODO(ev) put back clip speed
   // Okay, so we know that the heading after the update matches perfectly! So it has to be a coordinate frome thing
   
-  velocity_ = ClipSpeed(::Vector2D(new_vel * cos(heading_), new_vel * sin(heading_)));
+  velocity_ = ClipSpeed(geometry::Vector2D(new_vel * cos(heading_), new_vel * sin(heading_)));
 }
 
 }  // namespace nocturne
