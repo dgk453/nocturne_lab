@@ -570,7 +570,7 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
   //   real_new_yaw = new_yaw;
   // }
   // Compute delta yaw
-  const float delta_yaw = geometry::utils::AngleSub(real_new_yaw,
+  const float delta_yaw = geometry::utils::AngleSub(cur_headings[timestamp + 1],
                                                     cur_headings[timestamp]);
   // Calculate steering.
   float steering = delta_yaw / (cur_speeds[timestamp] * expert_dt_ +
