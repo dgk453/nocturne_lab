@@ -279,8 +279,8 @@ void Scenario::Step(float dt) {
   for (auto& object : traffic_lights_) {
     object->set_current_time(current_time_);
   }
-  std::cout << "[C++] t = " << current_time_ << std::endl;
-  std::cout << "[C++] expert heading" << expert_headings_.at(22).at(current_time_) << std::endl;
+  // std::cout << "[C++] t = " << current_time_ << std::endl;
+  // std::cout << "[C++] expert heading" << expert_headings_.at(22).at(current_time_) << std::endl;
 
   // update the vehicle bvh
   object_bvh_.Reset(objects_);
