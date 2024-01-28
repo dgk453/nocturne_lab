@@ -558,6 +558,11 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
     return std::nullopt;
   }
 
+  std::cout << "timestamp" << timestamp << std::endl;
+  std::cout << "[C++] expert velocity" << cur_velocities[timestamp].x() << ", " << cur_velocities[timestamp].y() << std::endl;
+  std::cout << "[C++] agent velocity" << obj.Velocity().x() << ", " << obj.Velocity().y() << std::endl;
+  std::cout << "[C++] expert speed" << cur_speeds[timestamp] << std::endl;
+  std::cout << "[C++] agent speed" << obj.speed() << std::endl;
   // compute acceleration
   // a_t = (v_{t+1} - v_t) / dt
   const float acceleration =
@@ -572,7 +577,7 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
     real_new_yaw = new_yaw;
   }
   // Compute delta yaw
-  const float delta_yaw = geometry::utils::AngleSub(real_new_yaw,
+  const float delta_yaw = geometry::utils::AngleSub(cur_headings[timestamp + 1],
                                                     cur_headings[timestamp]);
   // Calculate steering.
   float steering = delta_yaw / (cur_speeds[timestamp] * expert_dt_ +

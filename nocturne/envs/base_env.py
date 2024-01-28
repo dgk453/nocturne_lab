@@ -305,6 +305,8 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             done_dict = {key: True for key in done_dict}
 
         done_dict["__all__"] = all(done_dict.values())
+        # if done_dict["__all__"]:
+        #     import ipdb; ipdb.set_trace()
 
         self.total_samples += len(obs_dict.keys())
 
@@ -354,7 +356,8 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             # Get controlled vehicles
             if use_av_only:  # Control only the AVs
                 self.controlled_vehicles = []
-                all_vehs = self.scenario.getVehicles()
+                all_vehs = self.scenario.getObjectsThatMoved()
+                all_vehs.extend(self.scenario.getVehicles())
                 for vehicle in all_vehs:
                     if vehicle.is_av:
                         self.controlled_vehicles.append(vehicle)

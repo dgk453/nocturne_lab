@@ -114,7 +114,7 @@ def evaluate_policy(
 
             if mode == "expert_replay":
                 # Use expert actions
-                for veh_obj in env.controlled_vehicles:
+                for veh_obj in env.scenario.getObjectsThatMoved():
                     veh_obj.expert_control = True
 
             if mode == "cont_expert_act_replay":  # Use continuous expert actions
@@ -171,6 +171,7 @@ def evaluate_policy(
                     last_info_dicts[agent_id] = info_dict[agent_id].copy()
 
             if done_dict["__all__"]:  # If all agents are done
+                # import ipdb; ipdb.set_trace()
                 for agent_id in agent_ids:
                     agend_idx = veh_id_to_idx[agent_id]
                     veh_veh_coll[agend_idx] += last_info_dicts[agent_id]["veh_veh_collision"] * 1
@@ -263,24 +264,7 @@ if __name__ == "__main__":
         controlled_agents=500,
         data_path=env_config.data_path,
         traffic_files=files,
-        mode="expert-replay",
-        select_from_k_scenes=1000, # Use all scenes
-        num_episodes=100,
-        use_av_only=True,
-    )
-
-    logging.info(f'--- Results: EXPERT-TELEPORT ---')
-    print(df_expert_replay[["goal_rate", "off_road", "veh_veh_collision"]].mean())
-    
-    
-    logging.info(f'Evaluating policy using EXPERT-TRAJECTORY ACTIONS {len(files)} new scenes...\n')
-
-    df_expert_traj = evaluate_policy(
-        env_config=env_config,
-        controlled_agents=500,
-        data_path=env_config.data_path,
-        traffic_files=files,
-        mode="cont_expert_act_replay",
+        mode="expert_replay",
         select_from_k_scenes=1000,
         num_episodes=100,
         use_av_only=True,
