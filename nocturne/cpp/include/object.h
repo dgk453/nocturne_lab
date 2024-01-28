@@ -35,7 +35,7 @@ class Object : public ObjectBase {
   Object() = default;
 
   Object(int64_t id, float length, float width,
-         const geometry::Vector2D& position, float heading, float speed,
+         const geometry::Vector2D& position, float heading, const geometry::Vector2D& velocity,
          const geometry::Vector2D& target_position, float target_heading,
          float target_speed, bool can_block_sight = true,
          bool can_be_collided = true, bool check_collision = true)
@@ -44,7 +44,7 @@ class Object : public ObjectBase {
         length_(length),
         width_(width),
         heading_(heading),
-        speed_(ClipSpeed(speed)),
+        velocity_(ClipSpeed(velocity)),
         target_position_(target_position),
         target_heading_(target_heading),
         target_speed_(target_speed),
@@ -53,7 +53,7 @@ class Object : public ObjectBase {
   }
 
   Object(int64_t id, float length, float width, float max_speed,
-         const geometry::Vector2D& position, float heading, float speed,
+         const geometry::Vector2D& position, float heading, const geometry::Vector2D& velocity,
          const geometry::Vector2D& target_position, float target_heading,
          float target_speed, bool can_block_sight = true,
          bool can_be_collided = true, bool check_collision = true)
@@ -63,7 +63,7 @@ class Object : public ObjectBase {
         width_(width),
         max_speed_(max_speed),
         heading_(heading),
-        speed_(ClipSpeed(speed)),
+        velocity_(ClipSpeed(velocity)),
         target_position_(target_position),
         target_heading_(target_heading),
         target_speed_(target_speed),
@@ -82,8 +82,9 @@ class Object : public ObjectBase {
   float heading() const { return heading_; }
   void set_heading(float heading) { heading_ = heading; }
 
-  float speed() const { return speed_; }
-  void set_speed(float speed) { speed_ = ClipSpeed(speed); }
+  float speed() const { return velocity_.Norm(); }
+  const geometry::Vector2D& velocity() const { return velocity_; }
+  void set_velocity(geometry::Vector2D velocity) { velocity_ = ClipSpeed(velocity_); }
 
   const geometry::Vector2D& target_position() const { return target_position_; }
   void set_target_position(const geometry::Vector2D& target_position) {
@@ -142,7 +143,7 @@ class Object : public ObjectBase {
   }
 
   geometry::Vector2D Velocity() const {
-    return geometry::PolarToVector2D(speed_, heading_);
+    return velocity_;
   }
 
   geometry::ConvexPolygon BoundingPolygon() const override;
@@ -180,8 +181,13 @@ class Object : public ObjectBase {
 
   void KinematicBicycleStep(float dt);
 
-  float ClipSpeed(float speed) const {
-    return std::max(std::min(speed, max_speed_), -max_speed_);
+  geometry::Vector2D ClipSpeed(geometry::Vector2D velocity) const {
+    // project the velocity onto the circle of radius max_speed_
+    const float speed = velocity.Norm();
+    if (std::abs(speed) < max_speed_) {
+      return velocity;
+    }
+    return velocity * (max_speed_ / speed);
   }
 
   const int64_t id_;
@@ -191,8 +197,7 @@ class Object : public ObjectBase {
   const float max_speed_ = std::numeric_limits<float>::max();
 
   float heading_ = 0.0f;
-  // Postive for moving forward, negative for moving backward.
-  float speed_ = 0.0f;
+  geometry::Vector2D velocity_ = geometry::Vector2D(0.0f, 0.0f);
 
   geometry::Vector2D target_position_;
   float target_heading_ = 0.0f;

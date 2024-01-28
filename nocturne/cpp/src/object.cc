@@ -87,13 +87,13 @@ void Object::SetActionFromKeyboard() {
     acceleration_ = 1.0f;
   } else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
     // larger acceleration for braking than for moving backwards
-    acceleration_ = speed_ > 0 ? -2.0f : -1.0f;
-  } else if (std::abs(speed_) < 0.05) {
+    acceleration_ = velocity_.Norm() > 0 ? -2.0f : -1.0f;
+  } else if (std::abs(velocity_.Norm()) < 0.05) {
     // clip to 0
-    speed_ = 0.0f;
+    velocity_ = geometry::Vector2D(0.0f, 0.0f);
   } else {
     // friction
-    acceleration_ = 0.5f * (speed_ > 0 ? -1.0f : 1.0f);
+    acceleration_ = 0.5f * (velocity_.Norm() > 0 ? -1.0f : 1.0f);
   }
 
   // right: turn right; left: turn left
@@ -115,11 +115,11 @@ void Object::KinematicBicycleStep(float dt) {
   //     new_yaw = yaw + steering * (speed * t + 1/2 * accel * t ** 2)
   //     new_vel = vel + accel * t
   geometry::Vector2D vel = Velocity();
-  geometry::Vector2D rot = geometry::Vector2D(std::cos(heading_), std::sin(heading_));
-  position_ = position_ + vel * dt + 0.5 * acceleration_ * rot * (float)pow(dt, 2);
+  position_ = position_ + vel * dt + 0.5 * acceleration_ * (vel / vel.Norm()) * (float)pow(dt, 2);
 
-  heading_ = geometry::utils::AngleAdd(heading_, (float)(steering_ * (speed_ * dt + 0.5 * acceleration_ * pow(dt, 2))));
-  speed_ = ClipSpeed(speed_ + acceleration_ * dt);
+  heading_ = geometry::utils::AngleAdd(heading_, (float)(steering_ * (vel.Norm() * dt + 0.5 * acceleration_ * pow(dt, 2))));
+  float new_vel = vel.Norm() + acceleration_ * dt;
+  velocity_ = ClipSpeed(geometry::Vector2D(new_vel * cos(heading_), new_vel * sin(heading_)));
 }
 
 }  // namespace nocturne
