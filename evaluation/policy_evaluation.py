@@ -113,7 +113,7 @@ def evaluate_policy(
 
             if mode == "expert_replay":
                 # Use expert actions
-                for veh_obj in env.controlled_vehicles:
+                for veh_obj in env.scenario.getObjectsThatMoved():
                     veh_obj.expert_control = True
 
             if mode == "cont_expert_act_replay":  # Use continuous expert actions
@@ -254,7 +254,7 @@ if __name__ == "__main__":
         controlled_agents=500,
         data_path=env_config.data_path,
         traffic_files=files,
-        mode="cont_expert_act_replay",
+        mode="expert_replay",
         select_from_k_scenes=1000,
         num_episodes=100,
         use_av_only=True,

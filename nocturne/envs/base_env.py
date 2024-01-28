@@ -156,7 +156,8 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
 
         my_av_obj = self.controlled_vehicles[0]
         logging.debug(f"--- t = {self.step_num} ---")
-        logging.debug(f"applied_actions: {action_dict[my_av_obj.id]} \n")
+        if len(action_dict) > 0:
+            logging.debug(f"applied_actions: {action_dict[my_av_obj.id]} \n")
 
         logging.debug(f"veh_pos_____: ({my_av_obj.position.x:.3f}, {my_av_obj.position.y:.3f})")
         logging.debug(
@@ -304,6 +305,8 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             done_dict = {key: True for key in done_dict}
 
         done_dict["__all__"] = all(done_dict.values())
+        # if done_dict["__all__"]:
+        #     import ipdb; ipdb.set_trace()
 
         self.total_samples += len(obs_dict.keys())
 
