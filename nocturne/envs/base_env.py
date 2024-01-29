@@ -154,21 +154,21 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
         self.t += self.config.dt
         self.step_num += 1
 
-        my_av_obj = self.controlled_vehicles[0]
-        logging.debug(f"--- t = {self.step_num} ---")
-        if len(action_dict) > 0:
-            logging.debug(f"applied_actions: {action_dict[my_av_obj.id]} \n")
+        # my_av_obj = self.controlled_vehicles[0]
+        # logging.debug(f"--- t = {self.step_num} ---")
+        # if len(action_dict) > 0:
+        #     logging.debug(f"applied_actions: {action_dict[my_av_obj.id]} \n")
 
-        logging.debug(f"veh_pos_____: ({my_av_obj.position.x:.3f}, {my_av_obj.position.y:.3f})")
-        logging.debug(
-            f"true_veh_pos: ({self.scenario.expert_position(my_av_obj, self.step_num).x:.3f}, {self.scenario.expert_position(my_av_obj, self.step_num).y:.3f}) \n"
-        )
+        # logging.debug(f"veh_pos_____: ({my_av_obj.position.x:.3f}, {my_av_obj.position.y:.3f})")
+        # logging.debug(
+        #     f"true_veh_pos: ({self.scenario.expert_position(my_av_obj, self.step_num).x:.3f}, {self.scenario.expert_position(my_av_obj, self.step_num).y:.3f}) \n"
+        # )
 
-        logging.debug(f"veh_speed_____: {my_av_obj.speed():.3f}")
-        logging.debug(f"true_veh_speed: {self.scenario.expert_speed(my_av_obj, self.step_num):.3f} \n")
+        # logging.debug(f"veh_speed_____: {my_av_obj.speed:.3f}")
+        # logging.debug(f"true_veh_speed: {self.scenario.expert_speed(my_av_obj, self.step_num):.3f} \n")
 
-        logging.debug(f"veh_heading_____: {my_av_obj.heading:.3f}")
-        logging.debug(f"true_veh_heading: {self.scenario.expert_heading(my_av_obj, self.step_num):.3f} \n")
+        # logging.debug(f"veh_heading_____: {my_av_obj.heading:.3f}")
+        # logging.debug(f"true_veh_heading: {self.scenario.expert_heading(my_av_obj, self.step_num):.3f} \n")
 
         for veh_obj in self.controlled_vehicles:
             veh_id = veh_obj.getID()
@@ -375,7 +375,7 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
                     f"INIT_true_veh_pos: ({self.scenario.expert_position(my_av_obj, self.step_num).x:.4f}, {self.scenario.expert_position(my_av_obj, self.step_num).y:.4f}) \n"
                 )
 
-                logging.debug(f"INIT_veh_speed_____: {my_av_obj.speed():.3f}")
+                logging.debug(f"INIT_veh_speed_____: {my_av_obj.speed:.3f}")
                 logging.debug(f"INIT_true_veh_speed: {self.scenario.expert_speed(my_av_obj, self.step_num):.3f} \n")
 
                 logging.debug(f"INIT_veh_heading_____: {my_av_obj.heading:.3f}")
@@ -835,7 +835,7 @@ def _position_as_array(position: Vector2D) -> np.ndarray:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     env_config = load_config("env_config")
     env_config.data_path = "data_new/train_no_tl"

@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from nocturne.envs.base_env import BaseEnv
 from utils.config import load_config
+from utils.policies import load_policy
 
 
 def evaluate_policy(
@@ -256,10 +257,23 @@ if __name__ == "__main__":
     train_file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
     files = sorted([os.path.basename(file) for file in train_file_paths])
 
-    # Step through scene using expert-teleports
-    logging.info(f'Evaluating policy using EXPERT-TELEPORT mode {len(files)} new scenes...\n')
-
+    # EXPERT-TELEPORT
     df_expert_replay = evaluate_policy(
+        env_config=env_config,
+        controlled_agents=500,
+        data_path=env_config.data_path,
+        traffic_files=files,
+        mode="expert_replay",
+        select_from_k_scenes=1000,
+        num_episodes=100,
+        use_av_only=True,
+    )
+    
+    logging.info(f'--- Results: EXPERT-TELEPORT ---')
+    print(df_expert_replay[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    
+    # EXPERT-ACTIONS
+    df_expert_replay_actions = evaluate_policy(
         env_config=env_config,
         controlled_agents=500,
         data_path=env_config.data_path,
@@ -271,6 +285,32 @@ if __name__ == "__main__":
     )
     
     logging.info(f'--- Results: EXPERT-TRAJECTORY ACTIONS ---')
-    print(df_expert_replay[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    print(df_expert_replay_actions[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+
+
+    # BEHAVIORAL CLONING
+    BC_MODEL = 'human_policy_S100_01_20_11_22'
+
+    human_policy = load_policy(
+        data_path="models/il/",
+        file_name="human_policy_D99_S1000_01_28_19_42", 
+    )
+    
+    df_bc = evaluate_policy(
+        env_config=env_config,
+        controlled_agents=500,
+        data_path=env_config.data_path,
+        traffic_files=files,
+        mode="policy",
+        policy=human_policy,
+        select_from_k_scenes=1000,
+        num_episodes=100,
+        use_av_only=True,
+    )
+    
+    logging.info(f'--- Results: BEHAVIORAL CLONING ---')
+    print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+
+
 
 
