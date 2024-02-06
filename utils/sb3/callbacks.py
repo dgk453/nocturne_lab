@@ -80,6 +80,7 @@ class CustomMultiAgentCallback(BaseCallback):
 
         # Obtain the average ratio of agents that collided / achieved goal in the episode
         self.avg_frac_collided = self.locals["env"].num_agents_collided / self.locals["env"].total_agents_in_rollout
+        self.avg_frac_off_road = self.locals["env"].num_agents_off_road / self.locals["env"].total_agents_in_rollout
         self.avg_frac_goal_achieved = (
             self.locals["env"].num_agents_goal_achieved / self.locals["env"].total_agents_in_rollout
         )
@@ -94,15 +95,16 @@ class CustomMultiAgentCallback(BaseCallback):
         self.logger.record("rollout/ep_len_mean", avg_ep_len)
         self.logger.record("rollout/perc_goal_achieved", (self.avg_frac_goal_achieved) * 100)
         self.logger.record("rollout/perc_collided", (self.avg_frac_collided) * 100)
+        self.logger.record("rollout/perc_off_road", (self.avg_frac_off_road) * 100)
         self.logger.record("rollout/ep_adv_mean_norm", self.ep_advantage_avg_norm)
         self.logger.record("rollout/global_step", self.num_timesteps)
         self.logger.record("rollout/iter", self.iteration)
         self.logger.record("rollout/obs_min", np.min(observations[valid_obs_mask]))
         self.logger.record("rollout/obs_max", np.max(observations[valid_obs_mask]))
 
-        # Evaluate policy on train and test dataset
-        if self.iteration % self.exp_config.ma_callback.eval_freq == 0:
-            self._evaluate_policy(policy=self.model, dataset="train", name="train_det", data_folder="data_full", det_mode=True)
+        # Evaluate policy on train and test dataset TODO @ dc NOT USED
+        # if self.iteration % self.exp_config.ma_callback.eval_freq == 0:
+        #     self._evaluate_policy(policy=self.model, dataset="train", name="train_det", data_folder="data_full", det_mode=True)
 
         # Render
         if self.exp_config.ma_callback.save_video:
@@ -167,7 +169,7 @@ class CustomMultiAgentCallback(BaseCallback):
         wandb.save(self.path, base_path=self.model_base_path)
         logging.info(f"Saved policy on step {self.num_timesteps} / iter {self.iteration} at: \n {self.path}")
 
-    def _evaluate_policy(self, policy, dataset="train", name="", det_mode=True, data_folder="data_full", num_files=100):
+    def _evaluate_policy(self, policy, dataset="train", name="", det_mode=True, data_folder="data_new", num_files=100):
         """Evaluate policy in a number of scenes."""
 
         env_config = self.env_config.copy()
@@ -182,9 +184,9 @@ class CustomMultiAgentCallback(BaseCallback):
 
         # Choose dataset
         if dataset == "train":
-            env_config.data_path = f"./{data_folder}/train"
+            env_config.data_path = f"./{data_folder}/train_no_tl"
         elif dataset == "valid":
-            env_config.data_path = f"./{data_folder}/valid"
+            env_config.data_path = f"./{data_folder}/valid_no_tl"
             env_config.num_files = num_files
 
         # Make environment

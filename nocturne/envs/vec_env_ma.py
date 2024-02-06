@@ -44,6 +44,7 @@ class MultiAgentAsVecEnv(VecEnv):
         self.rewards = []  # Log reward per step
         self.dead_agent_ids = []  # Log dead agents per step
         self.num_agents_collided = 0  # Keep track of how many agents collided
+        self.num_agents_off_road = 0  # Keep track of how many agents went off road
         self.total_agents_in_rollout = 0  # Log total number of agents in rollout
         self.num_agents_goal_achieved = 0  # Keep track of how many agents reached their goal
         self.agents_in_scene = []
@@ -62,8 +63,9 @@ class MultiAgentAsVecEnv(VecEnv):
         self.agent_ids = []
         self.rewards = []
         self.dead_agent_ids = []
-        self.ep_collisions = 0
-        self.ep_goal_achived = 0
+        self.ep_veh_collisions = 0
+        self.ep_off_road = 0    
+        self.ep_goal_achieved = 0
 
         obs_all = np.full(fill_value=np.nan, shape=(self.num_envs, self.env.observation_space.shape[0]))
         for idx, agent_id in enumerate(obs_dict.keys()):
@@ -121,12 +123,14 @@ class MultiAgentAsVecEnv(VecEnv):
         # Reset episode if ALL agents are done or we reach the max number of steps
         if done_dict["__all__"]:
             for agent_id in self.agent_ids:
-                self.ep_collisions += self.last_info_dicts[agent_id]["collided"] * 1
-                self.ep_goal_achived += self.last_info_dicts[agent_id]["goal_achieved"] * 1
+                self.ep_veh_collisions += self.last_info_dicts[agent_id]["veh_veh_collision"] * 1
+                self.ep_off_road += self.last_info_dicts[agent_id]["veh_edge_collision"] * 1
+                self.ep_goal_achieved += self.last_info_dicts[agent_id]["goal_achieved"] * 1
 
             # Store the fraction of agents that collided in episode
-            self.num_agents_collided += self.ep_collisions
-            self.num_agents_goal_achieved += self.ep_goal_achived
+            self.num_agents_collided += self.ep_veh_collisions
+            self.num_agents_off_road += self.ep_off_road
+            self.num_agents_goal_achieved += self.ep_goal_achieved
             self.total_agents_in_rollout += len(self.agent_ids)
 
             # Save final observation where user can get it, then reset
@@ -142,7 +146,7 @@ class MultiAgentAsVecEnv(VecEnv):
             if self.psr:
                 self.psr_dict[self.env.file]["count"] += 1
                 self.psr_dict[self.env.file]["reward"] += (sum(rew_dict.values())) / len(self.agent_ids)
-                self.psr_dict[self.env.file]["goal_rate"] += self.ep_goal_achived / len(self.agent_ids)
+                self.psr_dict[self.env.file]["goal_rate"] += self.ep_goal_achieved / len(self.agent_ids)
 
             # Reset
             obs = self.reset()

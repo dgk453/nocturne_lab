@@ -6,6 +6,8 @@
 import json
 import logging
 import random
+import glob
+import os
 from collections import defaultdict, deque
 from enum import Enum
 from itertools import islice, product
@@ -21,7 +23,7 @@ from gym.spaces import Box, Discrete
 from nocturne import Action, Simulation, Vector2D, Vehicle
 from utils.config import load_config
 
-_MAX_NUM_TRIES_TO_FIND_VALID_VEHICLE = 1_000
+_MAX_NUM_TRIES_TO_FIND_VALID_VEHICLE = 100
 
 logging.getLogger("__name__")
 
@@ -74,19 +76,22 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
         }
         self.seed(self.config.seed)
 
-        # Load the list of valid files
+        # Load valid vehicles dict 
         with open(self.config.data_path / "valid_files.json", encoding="utf-8") as file:
             self.valid_veh_dict = json.load(file)
+      
+        # Load files
+        file_paths = self.config.data_path.glob('*.json')
 
-            if self.config.fix_file_order:
-                files = sorted(list(self.valid_veh_dict.keys()))
-            else:
-                files = list(self.valid_veh_dict.keys())
-                random.shuffle(files)
+        if self.config.fix_file_order:
+            files = sorted([os.path.basename(file) for file in file_paths])
+        else:
+            files = [os.path.basename(file) for file in file_paths]
+            random.shuffle(files)
 
-            # Select files
-            if self.config.num_files != -1:
-                self.files = files[: self.config.num_files]
+        # Select subset of files to sample from
+        if self.config.num_files != -1:
+            self.files = files[: self.config.num_files]
         if len(self.files) == 0:
             raise ValueError("Data path does not contain scenes.")
 
@@ -154,21 +159,21 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
         self.t += self.config.dt
         self.step_num += 1
 
-        my_av_obj = self.controlled_vehicles[0]
-        logging.debug(f"--- t = {self.step_num} ---")
-        if len(action_dict) > 0:
-            logging.debug(f"applied_actions: {action_dict[my_av_obj.id]} \n")
+        #my_av_obj = self.controlled_vehicles[0]
+        #logging.debug(f"--- t = {self.step_num} ---")
+        # if len(action_dict) > 0:
+        #     logging.debug(f"applied_actions: {action_dict[my_av_obj.id]} \n")
 
-        logging.debug(f"veh_pos_____: ({my_av_obj.position.x:.3f}, {my_av_obj.position.y:.3f})")
-        logging.debug(
-            f"true_veh_pos: ({self.scenario.expert_position(my_av_obj, self.step_num).x:.3f}, {self.scenario.expert_position(my_av_obj, self.step_num).y:.3f}) \n"
-        )
+        # logging.debug(f"veh_pos_____: ({my_av_obj.position.x:.3f}, {my_av_obj.position.y:.3f})")
+        # logging.debug(
+        #     f"true_veh_pos: ({self.scenario.expert_position(my_av_obj, self.step_num).x:.3f}, {self.scenario.expert_position(my_av_obj, self.step_num).y:.3f}) \n"
+        # )
 
-        logging.debug(f"veh_speed_____: {my_av_obj.speed:.3f}")
-        logging.debug(f"true_veh_speed: {self.scenario.expert_speed(my_av_obj, self.step_num):.3f} \n")
+        # logging.debug(f"veh_speed_____: {my_av_obj.speed:.3f}")
+        # logging.debug(f"true_veh_speed: {self.scenario.expert_speed(my_av_obj, self.step_num):.3f} \n")
 
-        logging.debug(f"veh_heading_____: {my_av_obj.heading:.3f}")
-        logging.debug(f"true_veh_heading: {self.scenario.expert_heading(my_av_obj, self.step_num):.3f} \n")
+        # logging.debug(f"veh_heading_____: {my_av_obj.heading:.3f}")
+        # logging.debug(f"true_veh_heading: {self.scenario.expert_heading(my_av_obj, self.step_num):.3f} \n")
 
         for veh_obj in self.controlled_vehicles:
             veh_id = veh_obj.getID()
@@ -349,6 +354,7 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
                 self.file = np.random.choice(self.files)
 
             self.simulation = Simulation(str(self.config.data_path / self.file), config=self.config.scenario)
+            
             self.scenario = self.simulation.getScenario()
 
             # Get controlled vehicles

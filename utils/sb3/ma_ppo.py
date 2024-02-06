@@ -165,6 +165,7 @@ class MultiAgentPPO(PPO):
         # EDIT_3: Reset buffer after each rollout
         env.total_agents_in_rollout = 0
         env.num_agents_collided = 0
+        env.num_agents_off_road = 0
         env.num_agents_goal_achieved = 0
         env.n_episodes = 0
         env.episode_lengths = []

@@ -84,6 +84,7 @@ models/
 # Figures and results
 figures/
 results/
+paper/
 
 # Videos and scene info dicts
 videos/
