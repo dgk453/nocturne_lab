@@ -73,7 +73,6 @@ def evaluate_policy(
             # Reset to a new scene
             obs_dict = env.reset(
                 filename=np.random.choice(traffic_files),
-                use_av_only=use_av_only,
             )
 
         else:
