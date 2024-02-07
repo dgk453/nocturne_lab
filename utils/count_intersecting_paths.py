@@ -132,24 +132,23 @@ def intersect_and_update(path_veh_i, path_veh_j, veh_id_to_intersecting_paths_di
             min_step_dist = min(step_dists)
             veh_id_to_intersecting_paths_dict[veh_i] += 1
             veh_id_to_intersecting_paths_dict[veh_j] += 1
-            veh_id_to_time_diff[veh_i] += min_step_dist
-            veh_id_to_time_diff[veh_j] += min_step_dist
             
-        # Take a average step diff with other vehicles that intersect
-        for veh_id in veh_id_to_intersecting_paths_dict.keys():
-            if veh_id_to_intersecting_paths_dict[veh_id] > 0:
-                veh_id_to_time_diff[veh_id] = veh_id_to_time_diff[veh_id] / veh_id_to_intersecting_paths_dict[veh_id]
-
+            # Always store the minimum time difference
+            if veh_id_to_time_diff[veh_i] > 0:
+                veh_id_to_time_diff[veh_i] = min(veh_id_to_time_diff[veh_i], min_step_dist)
+            else:
+                veh_id_to_time_diff[veh_i] = min_step_dist
+            
 def compile_scene_info(veh_id_to_intersecting_paths_dict, veh_id_to_time_diff):
     return {
         "veh_id": list(veh_id_to_intersecting_paths_dict.keys()),
         "intersecting_paths": list(veh_id_to_intersecting_paths_dict.values()),
-        "avg_step_diff": {veh_id: np.mean(diffs) if diffs else 0 for veh_id, diffs in veh_id_to_time_diff.items()},
+        "min_step_diff": list(veh_id_to_time_diff.values()),
         "total_intersecting_paths": sum(veh_id_to_intersecting_paths_dict.values())
     }
 
 def process_vehicle_combinations(expert_trajectories, vehicle_id_dict, veh_id_to_intersecting_paths_dict):
-    veh_id_to_time_diff = {veh_id: 0 for veh_id in vehicle_id_dict}
+    veh_id_to_time_diff = {veh_id: np.nan for veh_id in vehicle_id_dict}
     for veh_i, veh_j in combinations(vehicle_id_dict, 2):
         path_veh_i, path_veh_j = expert_trajectories[vehicle_id_dict[veh_i], :, :], expert_trajectories[vehicle_id_dict[veh_j], :, :]
         check_for_intersections(
@@ -184,7 +183,7 @@ def get_intersecting_path_dict(env, traffic_scenes, save_dict=True, filename="in
 
 if __name__ == "__main__":
     logging.basicConfig()
-    logging.getLogger().setLevel(logging.DEBUG)
+    logging.getLogger().setLevel(logging.INFO)
     
     # Load config
     env_config = load_config("env_config")
@@ -192,7 +191,7 @@ if __name__ == "__main__":
     env_config.data_path = "data_new/train_no_tl/"
     
     # Scenes on which to evaluate the models
-    # Make sure file order is fixed so that we evaluate on the same files used for training
+    # Make sure file order is fixed so that we evalu on the same files used for training
     file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
     files = sorted([os.path.basename(file) for file in file_paths])
     
