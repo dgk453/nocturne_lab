@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from nocturne.envs.base_env import BaseEnv
 from utils.config import load_config
+from utils.policies import load_policy
 
 
 def evaluate_policy(
@@ -69,6 +70,7 @@ def evaluate_policy(
 
     # Run
     for _ in tqdm(range(num_episodes)):
+        
         if traffic_files is not None:
             # Reset to a new scene
             obs_dict = env.reset(
@@ -76,7 +78,7 @@ def evaluate_policy(
             )
 
         else:
-            obs_dict = env.reset()
+            obs_dict = env.reset(use_av_only=use_av_only)
 
         agent_ids = list(obs_dict.keys())
         dead_agent_ids = []
@@ -169,13 +171,14 @@ def evaluate_policy(
                     last_info_dicts[agent_id] = info_dict[agent_id].copy()
 
             if done_dict["__all__"]:  # If all agents are done
+                # import ipdb; ipdb.set_trace()
                 for agent_id in agent_ids:
                     agend_idx = veh_id_to_idx[agent_id]
                     veh_veh_coll[agend_idx] += last_info_dicts[agent_id]["veh_veh_collision"] * 1
                     off_road[agend_idx] += last_info_dicts[agent_id]["veh_edge_collision"] * 1
                     goal_achieved[agend_idx] += last_info_dicts[agent_id]["goal_achieved"] * 1
 
-                    logging.info(f"Goal achieved: {last_info_dicts[agent_id]['goal_achieved']}")
+                    logging.debug(f"Goal achieved: {last_info_dicts[agent_id]['goal_achieved']}")
 
                 # Get scene info
                 if scene_path_mapping is not None:
@@ -238,16 +241,22 @@ def evaluate_policy(
 
 
 if __name__ == "__main__":
+    
+    # Logging
+    logger = logging.getLogger()
+    logger.setLevel('INFO')
+    
+    # Load environment config
     env_config = load_config("env_config")
 
-    # Set data path to new scenes
+    # Set data path to NEW scenes (with is_av flag)
     env_config.data_path = "data_new/train_no_tl"
 
+    # Get all scene files
     train_file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
     files = sorted([os.path.basename(file) for file in train_file_paths])
 
-    logging.info(f"Using {len(files)} scenes")
-
+    # EXPERT-TELEPORT
     df_expert_replay = evaluate_policy(
         env_config=env_config,
         controlled_agents=500,
@@ -258,8 +267,49 @@ if __name__ == "__main__":
         num_episodes=100,
         use_av_only=True,
     )
-
+    
+    logging.info(f'--- Results: EXPERT-TELEPORT ---')
     print(df_expert_replay[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    
+    # EXPERT-ACTIONS
+    df_expert_replay_actions = evaluate_policy(
+        env_config=env_config,
+        controlled_agents=500,
+        data_path=env_config.data_path,
+        traffic_files=files,
+        mode="cont_expert_act_replay",
+        select_from_k_scenes=1000,
+        num_episodes=100,
+        use_av_only=True,
+    )
+    
+    logging.info(f'--- Results: EXPERT-TRAJECTORY ACTIONS ---')
+    print(df_expert_replay_actions[["goal_rate", "off_road", "veh_veh_collision"]].mean())
 
-    # with open("invalid_train", "wb") as fp:   #Pickling
-    #     pickle.dump(inval_scenes, fp)
+
+    # BEHAVIORAL CLONING
+    BC_MODEL = 'human_policy_S100_01_20_11_22'
+
+    human_policy = load_policy(
+        data_path="models/il/",
+        file_name="human_policy_D99_S1000_01_28_19_42", 
+    )
+    
+    df_bc = evaluate_policy(
+        env_config=env_config,
+        controlled_agents=500,
+        data_path=env_config.data_path,
+        traffic_files=files,
+        mode="policy",
+        policy=human_policy,
+        select_from_k_scenes=1000,
+        num_episodes=100,
+        use_av_only=True,
+    )
+    
+    logging.info(f'--- Results: BEHAVIORAL CLONING ---')
+    print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+
+
+
+

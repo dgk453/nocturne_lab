@@ -41,7 +41,8 @@ void DefineObject(py::module& m) {
           "position", &Object::position,
           py::overload_cast<const geometry::Vector2D&>(&Object::set_position))
       .def_property("heading", &Object::heading, &Object::set_heading)
-      .def_property("speed", &Object::speed, &Object::set_speed)
+      .def("speed", &Object::speed)
+      .def_property("velocity", &Object::velocity, &Object::set_velocity)
       .def_property("target_position", &Object::target_position,
                     py::overload_cast<const geometry::Vector2D&>(
                         &Object::set_target_position))
@@ -62,7 +63,7 @@ void DefineObject(py::module& m) {
       .def_property_readonly("collision_type", &Object::collision_type)
 
       // Methods.
-      .def("velocity", &Object::Velocity)
+     //  .def("velocity", &Object::Velocity)
       .def("set_position",
            py::overload_cast<float, float>(&Object::set_position))
       .def("set_target_position",
@@ -89,8 +90,8 @@ void DefineObject(py::module& m) {
                                   &Object::set_target_position))
       .def("setGoalPosition",
            py::overload_cast<float, float>(&Object::set_target_position))
-      .def("setHeading", &Object::set_heading)
-      .def("setSpeed", &Object::set_speed);
+      .def("setHeading", &Object::set_heading);
+     //  .def("setSpeed", &Object::set_speed);
 }
 
 }  // namespace nocturne

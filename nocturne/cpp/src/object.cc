@@ -87,13 +87,13 @@ void Object::SetActionFromKeyboard() {
     acceleration_ = 1.0f;
   } else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
     // larger acceleration for braking than for moving backwards
-    acceleration_ = speed_ > 0 ? -2.0f : -1.0f;
-  } else if (std::abs(speed_) < 0.05) {
+    acceleration_ = velocity_.Norm() > 0 ? -2.0f : -1.0f;
+  } else if (std::abs(velocity_.Norm()) < 0.05) {
     // clip to 0
-    speed_ = 0.0f;
+    velocity_ = geometry::Vector2D(0.0f, 0.0f);
   } else {
     // friction
-    acceleration_ = 0.5f * (speed_ > 0 ? -1.0f : 1.0f);
+    acceleration_ = 0.5f * (velocity_.Norm() > 0 ? -1.0f : 1.0f);
   }
 
   // right: turn right; left: turn left
@@ -110,16 +110,38 @@ void Object::SetActionFromKeyboard() {
 // https://www.coursera.org/lecture/intro-self-driving-cars/lesson-2-the-kinematic-bicycle-model-Bi8yE
 void Object::KinematicBicycleStep(float dt) {
   // Forward dynamics:
-  //     new_x = x + vel_x * t + 1/2 * accel * cos(yaw) * t ** 2
-  //     new_y = y + vel_y * t + 1/2 * accel * sin(yaw) * t ** 2
-  //     new_yaw = yaw + steering * (speed * t + 1/2 * accel * t ** 2)
-  //     new_vel = vel + accel * t
-  geometry::Vector2D vel = Velocity();
-  geometry::Vector2D rot = geometry::Vector2D(std::cos(heading_), std::sin(heading_));
-  position_ = position_ + vel * dt + 0.5 * acceleration_ * rot * (float)pow(dt, 2);
 
-  heading_ = geometry::utils::AngleAdd(heading_, (float)(steering_ * (speed_ * dt + 0.5 * acceleration_ * pow(dt, 2))));
-  speed_ = ClipSpeed(speed_ + acceleration_ * dt);
+    // x = trajectory.x
+    // y = trajectory.y
+    // vel_x = trajectory.vel_x
+    // vel_y = trajectory.vel_y
+    // yaw = trajectory.yaw
+    // speed = jnp.sqrt(trajectory.vel_x**2 + trajectory.vel_y**2)
+
+    // # Shape: (..., num_objects, 2)
+    // action_array = self._clip_values(action.data)
+    // accel, steering = jnp.split(action_array, 2, axis=-1)
+    // if self._normalize_actions:
+    //   accel = accel * self._max_accel
+    //   steering = steering * self._max_steering
+    // t = self._dt
+
+    // new_x = x + vel_x * t + 0.5 * accel * jnp.cos(yaw) * t**2
+    // new_y = y + vel_y * t + 0.5 * accel * jnp.sin(yaw) * t**2
+    // delta_yaw = steering * (speed * t + 0.5 * accel * t**2)
+    // new_yaw = geometry.wrap_yaws(yaw + delta_yaw)
+    // new_vel = speed + accel * t
+    // new_vel_x = new_vel * jnp.cos(new_yaw)
+    // new_vel_y = new_vel * jnp.sin(new_yaw)
+  geometry::Vector2D vel = Velocity();
+  position_ = position_ + vel * dt + 0.5 * acceleration_ * geometry::Vector2D(std::cos(heading_), std::sin(heading_)) * (float)pow(dt, 2);
+
+  heading_ = geometry::utils::AngleAdd(heading_, (float)(steering_ * (vel.Norm() * dt + 0.5 * acceleration_ * pow(dt, 2))));
+  float new_vel = vel.Norm() + acceleration_ * dt;
+  // TODO(ev) put back clip speed
+  // Okay, so we know that the heading after the update matches perfectly! So it has to be a coordinate frome thing
+  
+  velocity_ = ClipSpeed(geometry::Vector2D(new_vel * cos(heading_), new_vel * sin(heading_)));
 }
 
 }  // namespace nocturne

@@ -269,11 +269,21 @@ void Scenario::Step(float dt) {
     object->ResetCollision();
     if (!object->expert_control()) {
       object->Step(dt);
+      // print the object speed and heading after the update and check
+      // that it matches the expert data 
+      // only print for object 2
+      // if (object->id() == 2) {
+      // std::cout << "checking the object speed and heading after step " << std::endl;
+      // std::cout << "[C++] object speed " << object->speed() << std::endl;
+      // std::cout << "[C++] object heading " << object->heading() << std::endl;
+      // std::cout << "[C++] expert speed " << expert_speeds_.at(object->id()).at(current_time_) << std::endl;
+      // std::cout << "[C++] expert heading " << expert_headings_.at(object->id()).at(current_time_) << std::endl;
+      // }
     } else {
       const int64_t obj_id = object->id();
       object->set_position(expert_trajectories_.at(obj_id).at(current_time_));
       object->set_heading(expert_headings_.at(obj_id).at(current_time_));
-      object->set_speed(expert_speeds_.at(obj_id).at(current_time_));
+      object->set_velocity(expert_velocities_.at(obj_id).at(current_time_));
     }
   }
   for (auto& object : traffic_lights_) {
@@ -558,24 +568,33 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
     return std::nullopt;
   }
 
+  // std::cout << "timestamp" << timestamp << std::endl;
+  // std::cout << "[C++] expert velocity" << cur_velocities[timestamp].x() << ", " << cur_velocities[timestamp].y() << std::endl;
+  // std::cout << "[C++] agent velocity" << obj.Velocity().x() << ", " << obj.Velocity().y() << std::endl;
+  // std::cout << "[C++] expert speed" << cur_speeds[timestamp] << std::endl;
+  // std::cout << "[C++] agent speed" << obj.speed() << std::endl;
+  // std::cout << "[C++] expert headings" << cur_headings[timestamp] << std::endl;
+  // std::cout << "[C++] agent headings" << obj.heading() << std::endl;
   // compute acceleration
   // a_t = (v_{t+1} - v_t) / dt
   const float acceleration =
       (cur_speeds[timestamp + 1] - cur_speeds[timestamp]) / expert_dt_;
+  
+  float new_yaw = cur_headings[timestamp + 1];
   // Calculate the updated yaw using the velocity angle
   float real_new_yaw = std::atan2(cur_velocities[timestamp + 1].y(),
                                   cur_velocities[timestamp + 1].x());
-  // TODO: @ev Update real_new_yaw
-  // if (cur_speeds[timestamp + 1] < 0.6) {
-  //   real_new_yaw = new_yaw;
-  // }
+  // TODO: @ev should we use real_new_yaw?
+  if (cur_speeds[timestamp + 1] < 0.6) {
+    real_new_yaw = new_yaw;
+  }
   // Compute delta yaw
   const float delta_yaw = geometry::utils::AngleSub(cur_headings[timestamp + 1],
                                                     cur_headings[timestamp]);
   // Calculate steering.
   float steering = delta_yaw / (cur_speeds[timestamp] * expert_dt_ +
                                 0.5 * acceleration * pow(expert_dt_, 2));
-  if (cur_speeds[timestamp] < 0.6) {
+  if (cur_speeds[timestamp] < 0.6 || cur_speeds[timestamp + 1] < 0.6 ) {
     steering = 0.0;
   }
   // return action
@@ -965,7 +984,7 @@ void Scenario::LoadObjects(const json& objects_json) {
     if (object_type == ObjectType::kVehicle) {
       std::shared_ptr<Vehicle> vehicle = std::make_shared<Vehicle>(
           cur_id, length, width, position, cur_headings[current_time_],
-          cur_speeds[current_time_], target_position, target_heading,
+          cur_velocities[current_time_], target_position, target_heading,
           target_speed, is_av);
       vehicles_.push_back(vehicle);
       objects_.push_back(vehicle);
@@ -976,7 +995,7 @@ void Scenario::LoadObjects(const json& objects_json) {
       if (object_type == ObjectType::kPedestrian) {
         std::shared_ptr<Pedestrian> pedestrian = std::make_shared<Pedestrian>(
             cur_id, length, width, position, cur_headings[current_time_],
-            cur_speeds[current_time_], target_position, target_heading,
+            cur_velocities[current_time_], target_position, target_heading,
             target_speed);
         pedestrians_.push_back(pedestrian);
         objects_.push_back(pedestrian);
@@ -986,7 +1005,7 @@ void Scenario::LoadObjects(const json& objects_json) {
       } else if (object_type == ObjectType::kCyclist) {
         std::shared_ptr<Cyclist> cyclist = std::make_shared<Cyclist>(
             cur_id, length, width, position, cur_headings[current_time_],
-            cur_speeds[current_time_], target_position, target_heading,
+            cur_velocities[current_time_], target_position, target_heading,
             target_speed);
         cyclists_.push_back(cyclist);
         objects_.push_back(cyclist);

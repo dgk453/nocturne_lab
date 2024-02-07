@@ -41,7 +41,7 @@ device = "cpu"
 if __name__ == "__main__":
     NUM_TRAIN_FILES = 1000
     MAX_EVAL_FILES = 5
-
+    
     # Create run
     run = wandb.init(
         project="eval_il_policy",
@@ -57,8 +57,13 @@ if __name__ == "__main__":
     env_config = load_config("env_config")
     exp_config = load_config("exp_config")
     env_config.num_files = NUM_TRAIN_FILES
+    
+    # SET TO NEW DATA PATH + specific files
+    env_config.data_path = 'data_new/train_no_tl'
+    train_file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
+    files = sorted([os.path.basename(file) for file in train_file_paths])
 
-    # Change action space
+    # New action space
     env_config.accel_discretization = 9
     env_config.accel_lower_bound = -5.0
     env_config.accel_upper_bound = 5.0
@@ -71,8 +76,9 @@ if __name__ == "__main__":
     # Create iterator
     waymo_iterator = TrajectoryIterator(
         env_config=env_config,
-        apply_obs_correction=False,
         data_path=env_config.data_path,
+        files=files,
+        apply_obs_correction=False,
         file_limit=env_config.num_files,
     )
 

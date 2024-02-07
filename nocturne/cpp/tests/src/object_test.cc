@@ -44,7 +44,7 @@ TEST(ObjectTest, UniformLinearMotionTest) {
   const float target_heading = heading;
   const float target_speed = speed;
 
-  Object obj(/*id=*/0, length, width, position, heading, speed, target_position,
+  Object obj(/*id=*/0, length, width, position, heading, velocity, target_position,
              target_heading, target_speed);
   const int num_steps = 100;
   const float dt = t / static_cast<float>(num_steps);
@@ -73,7 +73,7 @@ TEST(ObjectTest, ConstantAccelerationMotionTest) {
   float target_speed = speed + acceleration * t;
 
   // Forward test.
-  Object obj(/*id=*/0, length, width, position, heading, speed, target_position,
+  Object obj(/*id=*/0, length, width, position, heading, velocity, target_position,
              target_heading, target_speed);
   obj.set_acceleration(acceleration);
   const int num_steps = 100;
@@ -95,7 +95,7 @@ TEST(ObjectTest, ConstantAccelerationMotionTest) {
       geometry::PolarToVector2D(acceleration, heading) * (t * t * 0.5f);
   target_speed = speed + acceleration * t;
   obj.set_position(position);
-  obj.set_speed(speed);
+  obj.set_velocity(velocity);
   obj.set_target_position(target_position);
   obj.set_target_speed(target_speed);
   obj.set_acceleration(acceleration);
@@ -130,7 +130,7 @@ TEST(ObjectTest, SpeedCliptTest) {
   float target_speed = max_speed;
 
   // Forward test.
-  Object obj(/*id=*/0, length, width, max_speed, position, heading, speed,
+  Object obj(/*id=*/0, length, width, max_speed, position, heading, velocity,
              target_position, target_heading, target_speed);
   obj.set_acceleration(acceleration);
   const int num_steps = 100;
@@ -152,7 +152,7 @@ TEST(ObjectTest, SpeedCliptTest) {
       final_velocity * t2;
   target_speed = -max_speed;
   obj.set_position(position);
-  obj.set_speed(speed);
+  obj.set_velocity(velocity);
   obj.set_target_position(target_position);
   obj.set_target_speed(target_speed);
   obj.set_acceleration(acceleration);
@@ -170,6 +170,7 @@ TEST(ObjectTest, SteeringMotionTest) {
   const float width = 1.0f;
   const float heading = kQuarterPi;
   const float speed = 2.0f;
+  geometry::Vector2D velocity = geometry::PolarToVector2D(speed, heading);
   const float steering = geometry::utils::Radians(10.0f);
   const float dt = 0.1f;
   const geometry::Vector2D position(1.0f, 1.0f);
@@ -177,7 +178,7 @@ TEST(ObjectTest, SteeringMotionTest) {
       KinematicBicycleModel(position, length, heading, speed, steering, dt);
   const float target_speed = speed;
 
-  Object obj(/*id=*/0, length, width, position, heading, speed, target_position,
+  Object obj(/*id=*/0, length, width, position, heading, velocity, target_position,
              target_heading, target_speed);
   obj.set_steering(steering);
   obj.Step(dt);

@@ -161,21 +161,21 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
         self.t += self.config.dt
         self.step_num += 1
 
-        my_av_obj = self.controlled_vehicles[0]
-        logging.debug(f"--- t = {self.step_num} | veh_id: {my_av_obj.id} ---")
-        if len(action_dict) > 0:
-            logging.debug(f"applied_actions: {action_dict[my_av_obj.id]} \n")
+        # my_av_obj = self.controlled_vehicles[0]
+        # logging.debug(f"--- t = {self.step_num} ---")
+        # if len(action_dict) > 0:
+        #     logging.debug(f"applied_actions: {action_dict[my_av_obj.id]} \n")
 
-        logging.debug(f"veh_pos_____: ({my_av_obj.position.x:.3f}, {my_av_obj.position.y:.3f})")
-        logging.debug(
-            f"true_veh_pos: ({self.scenario.expert_position(my_av_obj, self.step_num).x:.3f}, {self.scenario.expert_position(my_av_obj, self.step_num).y:.3f}) \n"
-        )
+        # logging.debug(f"veh_pos_____: ({my_av_obj.position.x:.3f}, {my_av_obj.position.y:.3f})")
+        # logging.debug(
+        #     f"true_veh_pos: ({self.scenario.expert_position(my_av_obj, self.step_num).x:.3f}, {self.scenario.expert_position(my_av_obj, self.step_num).y:.3f}) \n"
+        # )
 
-        logging.debug(f"veh_speed_____: {my_av_obj.speed:.3f}")
-        logging.debug(f"true_veh_speed: {self.scenario.expert_speed(my_av_obj, self.step_num):.3f} \n")
+        # logging.debug(f"veh_speed_____: {my_av_obj.speed:.3f}")
+        # logging.debug(f"true_veh_speed: {self.scenario.expert_speed(my_av_obj, self.step_num):.3f} \n")
 
-        logging.debug(f"veh_heading_____: {my_av_obj.heading:.3f}")
-        logging.debug(f"true_veh_heading: {self.scenario.expert_heading(my_av_obj, self.step_num):.3f} \n")
+        # logging.debug(f"veh_heading_____: {my_av_obj.heading:.3f}")
+        # logging.debug(f"true_veh_heading: {self.scenario.expert_heading(my_av_obj, self.step_num):.3f} \n")
 
         for veh_obj in self.controlled_vehicles:
             veh_id = veh_obj.getID()
@@ -227,7 +227,7 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             if rew_cfg.position_target:
                 position_target_achieved = (goal_pos - obj_pos).norm() < rew_cfg.position_target_tolerance
             if rew_cfg.speed_target:
-                speed_target_achieved = np.abs(veh_obj.speed - veh_obj.target_speed) < rew_cfg.speed_target_tolerance
+                speed_target_achieved = np.abs(veh_obj.speed() - veh_obj.target_speed) < rew_cfg.speed_target_tolerance
             if rew_cfg.heading_target:
                 heading_target_achieved = (
                     np.abs(_angle_sub(veh_obj.heading, veh_obj.target_heading)) < rew_cfg.heading_target_tolerance
@@ -261,13 +261,13 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
                     if rew_cfg.goal_distance_penalty:
                         rew_dict[veh_id] -= (
                             rew_cfg.shaped_goal_distance_scaling
-                            * (np.abs(veh_obj.speed - veh_obj.target_speed) / rew_cfg.goal_speed_scaling)
+                            * (np.abs(veh_obj.speed() - veh_obj.target_speed) / rew_cfg.goal_speed_scaling)
                             / rew_cfg.reward_scaling
                         )
                     else:
                         rew_dict[veh_id] += (
                             rew_cfg.shaped_goal_distance_scaling
-                            * (1 - np.abs(veh_obj.speed - veh_obj.target_speed) / rew_cfg.goal_speed_scaling)
+                            * (1 - np.abs(veh_obj.speed() - veh_obj.target_speed) / rew_cfg.goal_speed_scaling)
                             / rew_cfg.reward_scaling
                         )
                 if rew_cfg.shaped_goal_distance and rew_cfg.heading_target:
@@ -853,7 +853,7 @@ def _position_as_array(position: Vector2D) -> np.ndarray:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     env_config = load_config("env_config")
     env_config.data_path = "data_new/train_no_tl"
