@@ -31,6 +31,7 @@ ActType = TypeVar("ActType")  # pylint: disable=invalid-name
 ObsType = TypeVar("ObsType")  # pylint: disable=invalid-name
 RenderType = TypeVar("RenderType")  # pylint: disable=invalid-name
 
+np.set_printoptions(suppress=True)
 
 class CollisionType(Enum):
     """Enum for collision types."""
@@ -180,12 +181,10 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             if veh_id in self.done_ids:
                 continue
 
-            # Remove vehicle from the scene if position is invalid (but not collided or goal achieved?)
-            if np.isclose(veh_obj.position.x, self.config.scenario.invalid_position):
+            # Remove vehicle from the scene if position is invalid 
+            if veh_obj.position.x == self.config.scenario.invalid_position:
+                logging.debug(f"(IN STEP) at t = {self.step_num} in {self.file}, vehicle {veh_obj.id} is invalid (pos = {veh_obj.position.x}). Removing it.")
                 self.invalid_samples += 1
-                logging.debug(f"(IN STEP) t = {self.step_num} | {self.file}")
-                logging.debug(f"veh_id = {veh_obj.id} | pos: {veh_obj.position.x}")
-                logging.debug(f"controlled_vehs: {[veh.id for veh in self.controlled_vehicles]} \n")
 
             # Get vehicle observation
             self.context_dict[veh_id].append(self.get_observation(veh_obj))
@@ -208,9 +207,13 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             info_dict[veh_id]["veh_veh_collision"] = False
             info_dict[veh_id]["veh_edge_collision"] = False
 
-            # Get current vehicle position and goal position
-            obj_pos = veh_obj.position
-            goal_pos = veh_obj.target_position
+            # Invalid vehicle: Set to goal achieved so that vehicle is removed from the scene
+            if veh_obj.position.x == self.config.scenario.invalid_position:
+                obj_pos = veh_obj.target_position
+                goal_pos = veh_obj.target_position
+            else:
+                obj_pos = veh_obj.position
+                goal_pos = veh_obj.target_position
 
             ############################################
             #   Compute rewards
@@ -229,6 +232,7 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             if position_target_achieved and speed_target_achieved and heading_target_achieved:
                 info_dict[veh_id]["goal_achieved"] = True
                 rew_dict[veh_id] += rew_cfg.goal_achieved_bonus / rew_cfg.reward_scaling
+        
             if rew_cfg.shaped_goal_distance and rew_cfg.position_target:
                 # penalize the agent for its distance from goal
                 # we scale by goal_dist_normalizers to ensure that this value is always
@@ -392,7 +396,7 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             dead_feat = -np.ones(
                 self.get_observation(self.scenario.getVehicles()[0]).shape[0] * self.config.subscriber.n_frames_stacked
             )
-            # step all the vehicles forward by one second and record their observations
+            # Step all the vehicles forward by one second and record their observations
             # as context
             self.config.scenario.context_length = max(
                 self.config.scenario.context_length, self.config.subscriber.n_frames_stacked
@@ -408,7 +412,8 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
                 veh.expert_control = True
             for _ in range(self.config.scenario.context_length):
                 for veh in self.scenario.getObjectsThatMoved():
-                    self.context_dict[veh.getID()].append(self.get_observation(veh))
+                    obs = self.get_observation(veh)
+                    self.context_dict[veh.getID()].append(obs)
                 # Step simulator
                 self.simulation.step(self.config.dt)
                 # Make sure to increment counter
@@ -442,7 +447,6 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
                 temp_vehicles = np.random.permutation(self.scenario.getObjectsThatMoved())
                 curr_index = 0
                 self.controlled_vehicles = []
-                logging.debug(f"(IN RESET) selecting vehicles to control, current list: {self.controlled_vehicles}")
 
                 for vehicle in temp_vehicles:
                     # Remove vehicles that have invalid positions
@@ -495,7 +499,8 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             dist = np.linalg.norm(obj_pos - goal_pos)
             self.goal_dist_normalizers[veh_id] = dist
             # compute the obs
-            self.context_dict[veh_id].append(self.get_observation(veh_obj))
+            obs = self.get_observation(veh_obj)
+            self.context_dict[veh_id].append(obs)
             if self.config.subscriber.n_frames_stacked > 1:
                 veh_deque = self.context_dict[veh_id]
                 context_list = list(
@@ -517,6 +522,7 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
                 max_goal_dist = dist
 
         self.done_ids = []
+        
         # Sanity check: Check if any vehicle is at an invalid position
         for veh_id in obs_dict.keys():
             veh_obj = self.all_vehicle_ids[veh_id]
@@ -555,8 +561,8 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             ego_state = self.scenario.ego_state(veh_obj)
 
             if self.config.normalize_state:
-                ego_state = self.normalize_ego_state_by_cat(ego_state)
-
+                ego_state_norm = self.normalize_ego_state_by_cat(ego_state)
+            
         visible_state = []
         if self.config.subscriber.use_observations:
             visible_state = self.scenario.flattened_visible_state(
@@ -564,9 +570,11 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             )
             if self.config.normalize_state:
                 visible_state = self.normalize_obs_by_cat(visible_state)
+                if visible_state.max() > 2: 
+                    print(f'vis_state: {visible_state}')
 
         # Concatenate
-        obs = np.concatenate((ego_state, visible_state, cur_position))
+        obs = np.concatenate((ego_state_norm, visible_state, cur_position))
 
         return obs
 
@@ -839,19 +847,17 @@ def _position_as_array(position: Vector2D) -> np.ndarray:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     env_config = load_config("env_config")
     env_config.data_path = "data_new/train_no_tl"
-    scene_name = "tfrecord-00000-of-01000_26.json"
+    env_config.max_num_vehicles = 200
+    env_config.num_files = 50
 
     # Initialize an environment
     env = BaseEnv(config=env_config)
 
-    obs_dict = env.reset(
-        filename=scene_name,
-        use_av_only=True,
-    )
+    obs_dict = env.reset()
 
     # Get info
     agent_ids = [agent_id for agent_id in obs_dict.keys()]
@@ -859,10 +865,10 @@ if __name__ == "__main__":
     dead_agent_ids = []
     av_veh_obj = veh_objects[agent_ids[0]]
 
-    for _ in range(80):
+    for _ in range(100_000):
         action_dict = {}
-        expert_action = env.scenario.expert_action(av_veh_obj, env.step_num)
-        action_dict[av_veh_obj.id] = expert_action
+        #expert_action = env.scenario.expert_action(av_veh_obj, env.step_num)
+        #action_dict[av_veh_obj.id] = expert_action
 
         obs_dict, rew_dict, done_dict, info_dict = env.step(action_dict)
 
