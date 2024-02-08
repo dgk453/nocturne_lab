@@ -19,16 +19,19 @@ from utils.config import load_config
 # Global setting
 logging.basicConfig(level="DEBUG")
 
-
 class TrajectoryIterator(IterableDataset):
-    def __init__(self, data_path, env_config, apply_obs_correction=False, with_replacement=True, file_limit=-1):
+    def __init__(self, data_path, env_config, files=None, apply_obs_correction=False, with_replacement=True, file_limit=-1):
         self.data_path = data_path
         self.config = env_config
+        self.files = files
         self.apply_obs_correction = apply_obs_correction
         self.env = BaseEnv(env_config)
         self.with_replacement = with_replacement
-        self.valid_veh_dict = json.load(open(f"{self.data_path}/valid_files.json", "r", encoding="utf-8"))
-        self.file_names = sorted(list(self.valid_veh_dict.keys()))[:file_limit]
+        if not files:
+            self.valid_veh_dict = json.load(open(f"{self.data_path}/valid_files.json", "r", encoding="utf-8"))
+            self.file_names = sorted(list(self.valid_veh_dict.keys()))[:file_limit]
+        else:
+            self.file_names = files
         self._set_discrete_action_space()
         self.observation_space = gym.spaces.Box(-np.inf, np.inf, self.env.observation_space.shape, np.float32)
         self.action_space = gym.spaces.Discrete(len(self.actions_to_joint_idx))
@@ -99,7 +102,7 @@ class TrajectoryIterator(IterableDataset):
         for timestep in range(self.config.episode_length + self.config.warmup_period):
             for veh_obj in objects_of_interest:
                 # Get (continuous) expert action
-                expert_action = scenario.expert_action(veh_obj, timestep)
+                expert_action = scenario.expert_action(veh_obj, sim.step_num)
 
                 # Check for invalid actions (None) (because no value available for taking
                 # derivative) or because the vehicle is at an invalid state
@@ -171,7 +174,7 @@ class TrajectoryIterator(IterableDataset):
                 # Select action from expert grid actions dataframe
                 for veh_obj in agents_of_interest:
                     if veh_obj.id in next_obs_dict:
-                        action = int(expert_actions_df[veh_obj.id].loc[timestep])
+                        action = int(expert_actions_df[veh_obj.id].loc[self.env.step_num])
                         action_dict[veh_obj.id] = action
 
             # Step through scene in expert-control mode
@@ -180,7 +183,7 @@ class TrajectoryIterator(IterableDataset):
                     veh_obj.expert_control = True
 
                     # Get (continuous) expert action
-                    expert_action = self.env.scenario.expert_action(veh_obj, timestep)
+                    expert_action = self.env.scenario.expert_action(veh_obj, self.env.step_num)
 
                     # Discretize expert action
                     if expert_action is not None:

@@ -87,7 +87,7 @@ def run_hr_ppo(
     total_timesteps: int = 5_000_000,
     num_files: int = 10,
     reg_weight: float = 0.0,
-    num_controlled_veh: int = 50,
+    num_controlled_veh: int = 20,
     pretrained_model: str = "None",
 ) -> None:
     """Train RL agent using PPO with CLI arguments."""
