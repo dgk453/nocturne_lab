@@ -80,7 +80,7 @@ def evaluate_policy(
             )
 
         else:
-            obs_dict = env.reset()
+            obs_dict = env.reset(use_av_only=use_av_only)
 
         agent_ids = list(obs_dict.keys())
         dead_agent_ids = []
