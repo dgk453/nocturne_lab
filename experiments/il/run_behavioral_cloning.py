@@ -14,6 +14,7 @@ from evaluation.policy_evaluation import evaluate_policy
 import wandb
 from utils.config import load_config
 from utils.imitation_learning.waymo_iterator import TrajectoryIterator
+from utils.policies import load_policy
 from utils.string_utils import datetime_to_str
 
 class CustomFeedForwardPolicy(policies.ActorCriticPolicy):
@@ -38,6 +39,7 @@ device = "cpu"
 
 if __name__ == "__main__":
     NUM_TRAIN_FILES = 100
+    NUM_EVAL_EPISODES = 100
     
     # Create run
     run = wandb.init( 
@@ -122,8 +124,8 @@ if __name__ == "__main__":
         mode="policy",
         policy=bc_trainer.policy,
         select_from_k_scenes=NUM_TRAIN_FILES,
-        num_episodes=500,
-        use_av_only=True,
+        num_episodes=NUM_EVAL_EPISODES,
+        use_av_only=False,
     )
     
     logging.info(f'--- Results: BEHAVIORAL CLONING ---')
@@ -133,7 +135,31 @@ if __name__ == "__main__":
     if bc_config.save_model:
         # Save model
         datetime_ = datetime_to_str(dt=datetime.now())
+        save_path = f"{bc_config.save_model_path}" 
+        name = f"{bc_config.model_name}_D{waymo_iterator.action_space.n}_S{NUM_TRAIN_FILES}_{datetime_}"
         bc_trainer.policy.save(
-            path=f"{bc_config.save_model_path}{bc_config.model_name}_D{waymo_iterator.action_space.n}_S{NUM_TRAIN_FILES}_{datetime_}.pt"
+            path=f'{save_path}/{name}.pt'
         )
         logging.info("(4/4) Saved policy!")
+        
+    
+        # BEHAVIORAL CLONING
+        human_policy = load_policy(
+            data_path=save_path,
+            file_name=name, 
+        )
+        
+        df_bc_loaded = evaluate_policy(
+            env_config=env_config,
+            controlled_agents=1,
+            data_path=env_config.data_path,
+            mode="policy",
+            policy=human_policy,
+            select_from_k_scenes=NUM_TRAIN_FILES,
+            num_episodes=NUM_EVAL_EPISODES,
+            use_av_only=False,
+        )
+        
+        logging.info(f'--- Results: BEHAVIORAL CLONING LOADED ---')
+        print(df_bc_loaded[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+        

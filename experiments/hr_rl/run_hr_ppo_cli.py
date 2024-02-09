@@ -86,7 +86,7 @@ def run_hr_ppo(
     rand_goals_timesteps: str = 'A',
     total_timesteps: int = 5_000_000,
     num_files: int = 10,
-    reg_weight: float = 0.0,
+    reg_weight: float = 0.025,
     num_controlled_veh: int = 20,
     pretrained_model: str = "None",
 ) -> None:

@@ -231,8 +231,8 @@ def evaluate_policy(
 if __name__ == "__main__":
     
     # Configurations
-    SELECT_FROM_K_SCENES = 2000
-    NUM_EPISODES = 2000
+    SELECT_FROM_K_SCENES = 100
+    NUM_EPISODES = 100
 
     # Load environment config
     env_config = load_config("env_config")
@@ -296,28 +296,25 @@ if __name__ == "__main__":
     logging.info(f'--- Results: EXPERT-TRAJECTORY DISCRETIZED ACTIONS ste: {env_config.steering_discretization} | acc: {env_config.accel_discretization} ---')
     print(df_expert_replay_actions_disc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
 
-    # # BEHAVIORAL CLONING
-    # BC_MODEL = 'human_policy_S100_01_20_11_22'
-
-    # human_policy = load_policy(
-    #     data_path="models/il/",
-    #     file_name="human_policy_D99_S1000_01_28_19_42", 
-    # )
+    # BEHAVIORAL CLONING
+    human_policy = load_policy(
+        data_path="models/il/",
+        file_name="human_policy_D403_S500_02_08_21_30", 
+    )
     
-    # df_bc = evaluate_policy(
-    #     env_config=env_config,
-    #     controlled_agents=500,
-    #     data_path=env_config.data_path,
-    #     traffic_files=files,
-    #     mode="policy",
-    #     policy=human_policy,
-    #     select_from_k_scenes=1000,
-    #     num_episodes=100,
-    #     use_av_only=True,
-    # )
+    df_bc = evaluate_policy(
+        env_config=env_config,
+        controlled_agents=1,
+        data_path=env_config.data_path,
+        mode="policy",
+        policy=human_policy,
+        select_from_k_scenes=SELECT_FROM_K_SCENES,
+        num_episodes=NUM_EPISODES,
+        use_av_only=True,
+    )
     
-    # logging.info(f'--- Results: BEHAVIORAL CLONING ---')
-    # print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    logging.info(f'--- Results: BEHAVIORAL CLONING ---')
+    print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
 
 
 
