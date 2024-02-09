@@ -153,36 +153,36 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
         rew_dict = {}
         done_dict = {}
         info_dict = defaultdict(dict)
-
         rew_cfg = self.config.rew_cfg
-
+        
+        # Apply actions for the controlled vehicles
         self.apply_actions(action_dict)
+        
+        # Set the vehicles we are not controlling in expert-control mode...
+        # to make sure they step their fixed trajectories
+        objects_to_teleport = [
+            obj for obj in self.scenario.getVehicles()
+            if obj in self.scenario.getObjectsThatMoved()
+            and obj not in self.controlled_vehicles
+        ]
+        for obj in objects_to_teleport:
+            obj.expert_control = True
+            
+        # Step the simulator
         self.simulation.step(self.config.dt)
         self.t += self.config.dt
         self.step_num += 1
 
-        my_av_obj = self.controlled_vehicles[0]
-        logging.debug(f"--- t = {self.step_num} | veh_id: {my_av_obj.id} ---")
-        if len(action_dict) > 0:
-            logging.debug(f"applied_actions: {action_dict[my_av_obj.id]} \n")
-
-        logging.debug(f"veh_pos_____: ({my_av_obj.position.x:.3f}, {my_av_obj.position.y:.3f})")
-        logging.debug(
-            f"true_veh_pos: ({self.scenario.expert_position(my_av_obj, self.step_num).x:.3f}, {self.scenario.expert_position(my_av_obj, self.step_num).y:.3f}) \n"
-        )
-
-        logging.debug(f"veh_speed_____: {my_av_obj.speed:.3f}")
-        logging.debug(f"true_veh_speed: {self.scenario.expert_speed(my_av_obj, self.step_num):.3f} \n")
-
-        logging.debug(f"veh_heading_____: {my_av_obj.heading:.3f}")
-        logging.debug(f"true_veh_heading: {self.scenario.expert_heading(my_av_obj, self.step_num):.3f} \n")
-
+        logging.debug(f'stepping {[obj.id for obj in objects_to_teleport]} ({len(objects_to_teleport)} / {len(objects_to_teleport)+len(self.controlled_vehicles)}) vehs in expert-control mode.\n')
+        logging.debug(f'controlling vehicle(s): {[veh.id for veh in self.controlled_vehicles]}, is_av? {[veh.is_av for veh in self.controlled_vehicles]}, expert-control = {[veh.expert_control for veh in self.controlled_vehicles]}.')
+        
+        # Take actions for the controlled vehicles
         for veh_obj in self.controlled_vehicles:
             veh_id = veh_obj.getID()
             if veh_id in self.done_ids:
                 continue
 
-            # Remove vehicle from the scene if position is invalid 
+            # Check if vehicle position is invalid 
             if veh_obj.position.x == self.config.scenario.invalid_position:
                 logging.debug(f"(IN STEP) at t = {self.step_num} in {self.file}, vehicle {veh_obj.id} is invalid (pos = {veh_obj.position.x}). Removing it.")
                 self.invalid_samples += 1
@@ -207,16 +207,9 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             info_dict[veh_id]["collided"] = False
             info_dict[veh_id]["veh_veh_collision"] = False
             info_dict[veh_id]["veh_edge_collision"] = False
-
-            # Invalid vehicle: Set to goal achieved so that vehicle is removed from the scene
-            if veh_obj.position.x == self.config.scenario.invalid_position:
-                obj_pos = veh_obj.target_position
-                goal_pos = veh_obj.target_position
-            else:
-                obj_pos = veh_obj.position
-                goal_pos = veh_obj.target_position
-                
-                #print(f'pos_to_goal: {(obj_pos - goal_pos).norm()}')
+       
+            obj_pos = veh_obj.position
+            goal_pos = veh_obj.target_position
 
             ############################################
             #   Compute rewards
@@ -317,9 +310,6 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             done_dict = {key: True for key in done_dict}
 
         done_dict["__all__"] = all(done_dict.values())
-        
-        if done_dict["__all__"]:
-            logging.debug(f'done')
 
         self.total_samples += len(obs_dict.keys())
 
@@ -380,20 +370,6 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
                 
                 if len(self.controlled_vehicles) == 0:
                     raise ValueError(f"Scene {self.file!s} has no AV vehicles in. Skip")
-
-                logging.debug(f"-- RESET: controlling is_av ( = {self.controlled_vehicles[0].is_av} ) vehicle {self.controlled_vehicles[0].id} --")
-
-                my_av_obj = self.controlled_vehicles[0]
-                logging.debug(f"INIT_veh_pos_____: ({my_av_obj.position.x:.4f}, {my_av_obj.position.y:.4f})")
-                logging.debug(
-                    f"INIT_true_veh_pos: ({self.scenario.expert_position(my_av_obj, self.step_num).x:.4f}, {self.scenario.expert_position(my_av_obj, self.step_num).y:.4f}) \n"
-                )
-
-                logging.debug(f"INIT_veh_speed_____: {my_av_obj.speed:.3f}")
-                logging.debug(f"INIT_true_veh_speed: {self.scenario.expert_speed(my_av_obj, self.step_num):.3f} \n")
-
-                logging.debug(f"INIT_veh_heading_____: {my_av_obj.heading:.3f}")
-                logging.debug(f"INIT_true_veh_heading: {self.scenario.expert_heading(my_av_obj, self.step_num):.3f} \n")
 
             #####################################################################
             #   Construct context dictionary of observations that can be used to
@@ -636,12 +612,8 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
                 # Sample random position
                 rand_goal_pos = random.choice(goal_positions)
 
-                logging.debug(f"def_goal_pos: {veh_obj.target_position}")
-
                 # Set vehicle goal position
                 veh_obj.setGoalPosition(rand_goal_pos)
-
-                logging.debug(f"new_goal_pos: {veh_obj.target_position} \n")
 
             else:  # Keep the standard goal positions at the end of the expert trajectory
                 veh_obj.setGoalPosition(veh_obj.target_position)
@@ -853,10 +825,11 @@ def _position_as_array(position: Vector2D) -> np.ndarray:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     env_config = load_config("env_config")
     env_config.data_path = "data_new/train_no_tl"
+    env_config.num_files = 2000
     env_config.max_num_vehicles = 200
     env_config.num_files = 50
     env_config.use_av_only = True
@@ -864,19 +837,18 @@ if __name__ == "__main__":
     # Initialize an environment
     env = BaseEnv(config=env_config)
 
-    obs_dict = env.reset(filename='tfrecord-00057-of-01000_364.json')
+    obs_dict = env.reset()
 
     # Get info
     agent_ids = [agent_id for agent_id in obs_dict.keys()]
     veh_objects = {agent.id: agent for agent in env.controlled_vehicles}
     dead_agent_ids = []
-    av_veh_obj = veh_objects[agent_ids[0]]
-
-    for _ in range(90):
+    
+    for _ in range(500):
         action_dict = {}
-        # Take expert action
-        expert_action = env.scenario.expert_action(av_veh_obj, env.step_num)
-        action_dict[av_veh_obj.id] = expert_action
+        # # Take expert action
+        # expert_action = env.scenario.expert_action(av_veh_obj, env.step_num)
+        # action_dict[av_veh_obj.id] = expert_action
 
         obs_dict, rew_dict, done_dict, info_dict = env.step(action_dict)
 
