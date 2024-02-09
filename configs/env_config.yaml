@@ -5,7 +5,7 @@ experiment: intersection
 env: my_custom_multi_env_v1 # name of the env, hardcoded for now
 
 # All goals are achievable within 90 steps
-episode_length: 80
+episode_length: 90
 warmup_period: 10 # In the RL setting we use a warmup of 10 steps
 # How many files of the total dataset to use. -1 indicates to use all of them
 num_files: 10
@@ -15,12 +15,12 @@ dt: 0.1
 sims_per_step: 10
 discretize_actions: true
 include_head_angle: false # Whether to include the head tilt/angle as part of a vehicle's action
-accel_discretization: 9
-accel_lower_bound: -5.0
-accel_upper_bound: 5.0
+accel_discretization: 13 
+accel_lower_bound: -4.0 # decelerate
+accel_upper_bound: 4.0 # accelerate
 steering_lower_bound: -0.3 # steer right
 steering_upper_bound: 0.3 # steer left
-steering_discretization: 9
+steering_discretization: 31
 max_num_vehicles: 200 # Maximum number of vehicles in the scene we control
 use_av_only: false # If true, only use the AV for the environment
 scenario:
