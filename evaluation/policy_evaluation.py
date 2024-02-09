@@ -12,6 +12,7 @@ from nocturne.envs.base_env import BaseEnv
 from utils.config import load_config
 from utils.policies import load_policy
 
+logging.basicConfig(level=logging.DEBUG)
 
 def evaluate_policy(
     env_config,
@@ -53,12 +54,9 @@ def evaluate_policy(
     -------
         df: performance per scene and vehicle id.
     """
-    # Set the number of vehicles to control per scene
+    # Configurations
     env_config.max_num_vehicles = controlled_agents
-
-    # Set path where to load scenes from
     env_config.data_path = data_path
-    
     env_config.use_av_only = use_av_only
 
     # Set which files to use
@@ -80,27 +78,67 @@ def evaluate_policy(
             )
 
         else:
-            obs_dict = env.reset(use_av_only=use_av_only)
+            obs_dict = env.reset()
 
         agent_ids = list(obs_dict.keys())
         dead_agent_ids = []
         veh_id_to_idx = {veh_id: idx for idx, veh_id in enumerate(agent_ids)}
         last_info_dicts = {agent_id: {} for agent_id in agent_ids}
-
-        logging.debug(f"Controlling {agent_ids} vehicles in {env.file} \n")
-
+        
         # Storage
         goal_achieved = np.zeros(len(agent_ids))
         off_road = np.zeros(len(agent_ids))
         veh_veh_coll = np.zeros(len(agent_ids))
 
-        logging.debug(f"scene: {env.file} -- veh_id = {agent_ids} --")
-
-        for time_step in range(env_config.episode_length):
-            logging.debug(f"time_step: {time_step}")
+        for _ in range(env_config.episode_length):
 
             # Get actions
             action_dict = {}
+            
+            if mode == "expert_replay":
+                # Set all controlled vehicles to be experts
+                for veh in env.controlled_vehicles:
+                    veh.expert_control = True
+                    
+            if mode == "random":
+                # Take random actions
+                action_dict = {
+                    veh.id: env.action_space.sample() 
+                    for veh in env.controlled_vehicles
+                    if veh.id not in dead_agent_ids
+                }
+
+            if mode == "cont_expert_act_replay":  
+                # Use continuous expert actions
+                for veh_obj in env.controlled_vehicles:
+                    # Get (continuous) expert action
+                    expert_action = env.scenario.expert_action(veh_obj, env.step_num)
+                    action_dict[veh_obj.id] = expert_action
+                    
+            if mode == "disc_expert_act_replay":  
+                
+                # Use discretized expert actions
+                for veh_obj in env.controlled_vehicles:
+                    # Get (continuous) expert action
+                    expert_action = env.scenario.expert_action(veh_obj, env.step_num)
+
+                    # Discretize expert action
+                    if expert_action is None or expert_action.steering != expert_action.steering:
+                        print(f"None at {env.step_num} for veh {veh_obj.id} in {env.file} \n")
+
+                    elif expert_action is not None:
+                        expert_accel, expert_steering, _ = expert_action.numpy()
+
+                        # Map actions to nearest grsid indices and joint action
+                        acc_grid_idx = np.argmin(np.abs(env.accel_grid - expert_accel))
+                        ste_grid_idx = np.argmin(np.abs(env.steering_grid - expert_steering))
+
+                        expert_action_idx = env.actions_to_idx[
+                            env.accel_grid[acc_grid_idx],
+                            env.steering_grid[ste_grid_idx],
+                        ][0]
+
+                        action_dict[veh_obj.id] = expert_action_idx
 
             if mode == "policy" and policy is not None:
                 for agent_id in obs_dict:
@@ -114,55 +152,6 @@ def evaluate_policy(
             elif mode == "policy" and policy is None:
                 raise ValueError("Policy is not given. Please provide a policy.")
 
-            if mode == "expert_replay":
-                # Use expert actions
-                for veh_obj in env.scenario.ObjectsThatMoved():
-                    veh_obj.expert_control = True
-
-            if mode == "cont_expert_act_replay":  # Use continuous expert actions
-                for veh_obj in env.controlled_vehicles:
-                    veh_obj.expert_control = False
-
-                    # Get (continuous) expert action
-                    expert_action = env.scenario.expert_action(veh_obj, env.step_num)
-
-                    action_dict[veh_obj.id] = expert_action
-
-            if mode == "disc_expert_act_replay":  # Use discretized expert actions
-                # Get expert actions and discretize
-                for veh_obj in env.controlled_vehicles:
-                    veh_obj.expert_control = False
-
-                    # Get (continuous) expert action
-                    expert_action = env.scenario.expert_action(veh_obj, time_step)
-
-                    # Discretize expert action
-                    if expert_action is None:
-                        logging.info(f"None at {time_step} for veh {veh_obj.id} in {env.file} \n")
-
-                    elif expert_action is not None:
-                        expert_accel, expert_steering, _ = expert_action.numpy()
-
-                        # Map actions to nearest grid indices and joint action
-                        acc_grid_idx = np.argmin(np.abs(env.accel_grid - expert_accel))
-                        ste_grid_idx = np.argmin(np.abs(env.steering_grid - expert_steering))
-
-                        expert_action_idx = env.actions_to_idx[
-                            env.accel_grid[acc_grid_idx],
-                            env.steering_grid[ste_grid_idx],
-                        ][0]
-
-                        action_dict[veh_obj.id] = expert_action_idx
-
-                        logging.debug(
-                            f"true_exp_acc = {expert_action.acceleration:.4f}; "
-                            f"true_exp_steer = {expert_action.steering:.4f}"
-                        )
-                        logging.debug(
-                            f"disc_exp_acc = {env.accel_grid[acc_grid_idx]:.4f}; "
-                            f"disc_exp_steer = {env.steering_grid[ste_grid_idx]:.4f} \n"
-                        )
-
             # Take a step
             obs_dict, rew_dict, done_dict, info_dict = env.step(action_dict)
 
@@ -173,14 +162,11 @@ def evaluate_policy(
                     last_info_dicts[agent_id] = info_dict[agent_id].copy()
 
             if done_dict["__all__"]:  # If all agents are done
-                # import ipdb; ipdb.set_trace()
                 for agent_id in agent_ids:
-                    agend_idx = veh_id_to_idx[agent_id]
-                    veh_veh_coll[agend_idx] += last_info_dicts[agent_id]["veh_veh_collision"] * 1
-                    off_road[agend_idx] += last_info_dicts[agent_id]["veh_edge_collision"] * 1
-                    goal_achieved[agend_idx] += last_info_dicts[agent_id]["goal_achieved"] * 1
-
-                    logging.debug(f"Goal achieved: {last_info_dicts[agent_id]['goal_achieved']}")
+                    agent_idx = veh_id_to_idx[agent_id]
+                    veh_veh_coll[agent_idx] += last_info_dicts[agent_id]["veh_veh_collision"] * 1
+                    off_road[agent_idx] += last_info_dicts[agent_id]["veh_edge_collision"] * 1
+                    goal_achieved[agent_idx] += last_info_dicts[agent_id]["goal_achieved"] * 1
 
                 # Get scene info
                 if scene_path_mapping is not None:
@@ -244,73 +230,94 @@ def evaluate_policy(
 
 if __name__ == "__main__":
     
-    # Logging
-    logger = logging.getLogger()
-    logger.setLevel('INFO')
-    
+    # Configurations
+    SELECT_FROM_K_SCENES = 2000
+    NUM_EPISODES = 2000
+
     # Load environment config
     env_config = load_config("env_config")
 
     # Set data path to NEW scenes (with is_av flag)
     env_config.data_path = "data_new/train_no_tl"
 
-    # Get all scene files
-    train_file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
-    files = sorted([os.path.basename(file) for file in train_file_paths])
-
     # EXPERT-TELEPORT
     df_expert_replay = evaluate_policy(
         env_config=env_config,
-        controlled_agents=500,
+        controlled_agents=200,
         data_path=env_config.data_path,
-        traffic_files=files,
         mode="expert_replay",
-        select_from_k_scenes=1000,
-        num_episodes=100,
-        use_av_only=False,
+        select_from_k_scenes=SELECT_FROM_K_SCENES,
+        num_episodes=NUM_EPISODES,
+        use_av_only=True,
     )
     
     logging.info(f'--- Results: EXPERT-TELEPORT ---')
     print(df_expert_replay[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    
+    # RANDOM
+    df_random = evaluate_policy(
+        env_config=env_config,
+        controlled_agents=500,
+        data_path=env_config.data_path,
+        mode="random",
+        select_from_k_scenes=SELECT_FROM_K_SCENES,
+        num_episodes=NUM_EPISODES,
+        use_av_only=True,
+    )
+    
+    logging.info(f'--- Results: RANDOM ACTIONS ---')
+    print(df_random[["goal_rate", "off_road", "veh_veh_collision"]].mean())
     
     # EXPERT-ACTIONS
     df_expert_replay_actions = evaluate_policy(
         env_config=env_config,
         controlled_agents=500,
         data_path=env_config.data_path,
-        traffic_files=files,
         mode="cont_expert_act_replay",
-        select_from_k_scenes=1000,
-        num_episodes=100,
-        use_av_only=False,
+        select_from_k_scenes=SELECT_FROM_K_SCENES,
+        num_episodes=NUM_EPISODES,
+        use_av_only=True,
     )
     
     logging.info(f'--- Results: EXPERT-TRAJECTORY ACTIONS ---')
     print(df_expert_replay_actions[["goal_rate", "off_road", "veh_veh_collision"]].mean())
-
-
-    # BEHAVIORAL CLONING
-    BC_MODEL = 'human_policy_S100_01_20_11_22'
-
-    human_policy = load_policy(
-        data_path="models/il/",
-        file_name="human_policy_D99_S1000_01_28_19_42", 
-    )
     
-    df_bc = evaluate_policy(
+    # Discretized EXPERT-ACTIONS
+    df_expert_replay_actions_disc = evaluate_policy(
         env_config=env_config,
         controlled_agents=500,
         data_path=env_config.data_path,
-        traffic_files=files,
-        mode="policy",
-        policy=human_policy,
-        select_from_k_scenes=1000,
-        num_episodes=100,
+        mode="disc_expert_act_replay",
+        select_from_k_scenes=SELECT_FROM_K_SCENES,
+        num_episodes=NUM_EPISODES,
         use_av_only=True,
     )
     
-    logging.info(f'--- Results: BEHAVIORAL CLONING ---')
-    print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    logging.info(f'--- Results: EXPERT-TRAJECTORY DISCRETIZED ACTIONS ste: {env_config.steering_discretization} | acc: {env_config.accel_discretization} ---')
+    print(df_expert_replay_actions_disc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+
+    # # BEHAVIORAL CLONING
+    # BC_MODEL = 'human_policy_S100_01_20_11_22'
+
+    # human_policy = load_policy(
+    #     data_path="models/il/",
+    #     file_name="human_policy_D99_S1000_01_28_19_42", 
+    # )
+    
+    # df_bc = evaluate_policy(
+    #     env_config=env_config,
+    #     controlled_agents=500,
+    #     data_path=env_config.data_path,
+    #     traffic_files=files,
+    #     mode="policy",
+    #     policy=human_policy,
+    #     select_from_k_scenes=1000,
+    #     num_episodes=100,
+    #     use_av_only=True,
+    # )
+    
+    # logging.info(f'--- Results: BEHAVIORAL CLONING ---')
+    # print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
 
 
 
