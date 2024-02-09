@@ -5,7 +5,8 @@ iterator for generating expert trajectories in Waymo scenes.
 import json
 import logging
 from itertools import product
-
+import os
+from pathlib import Path
 import gymnasium as gym
 import numpy as np
 import pandas as pd
@@ -20,18 +21,18 @@ from utils.config import load_config
 logging.basicConfig(level="DEBUG")
 
 class TrajectoryIterator(IterableDataset):
-    def __init__(self, data_path, env_config, files=None, apply_obs_correction=False, with_replacement=True, file_limit=-1):
-        self.data_path = data_path
+    def __init__(self, data_path, env_config, apply_obs_correction=False, with_replacement=True, file_limit=-1):
+        self.data_path = Path(data_path)
         self.config = env_config
-        self.files = files
         self.apply_obs_correction = apply_obs_correction
         self.env = BaseEnv(env_config)
         self.with_replacement = with_replacement
-        if not files:
-            self.valid_veh_dict = json.load(open(f"{self.data_path}/valid_files.json", "r", encoding="utf-8"))
-            self.file_names = sorted(list(self.valid_veh_dict.keys()))[:file_limit]
-        else:
-            self.file_names = files
+       
+        # Select traffic scenes to sample from
+        self.valid_veh_dict = json.load(open(f"{self.data_path}/valid_files.json", "r", encoding="utf-8"))
+        file_paths = self.data_path.glob('*.json')
+        self.file_names = sorted([os.path.basename(file) for file in file_paths])[:file_limit]
+
         self._set_discrete_action_space()
         self.observation_space = gym.spaces.Box(-np.inf, np.inf, self.env.observation_space.shape, np.float32)
         self.action_space = gym.spaces.Discrete(len(self.actions_to_joint_idx))
@@ -61,15 +62,15 @@ class TrajectoryIterator(IterableDataset):
                 filename = self.file_names.pop()
 
             # (2) Obtain discretized expert actions
-            if self.apply_obs_correction:
-                expert_actions_df = self._discretize_expert_actions(filename)
-            else:
-                expert_actions_df = None
+            #TODO: @dc fix with only avs
+            # if self.apply_obs_correction:
+            #     expert_actions_df = self._discretize_expert_actions(filename)
+            # else:
+            expert_actions_df = None
 
             # (3) Obtain observations
-            expert_obs, expert_acts, expert_next_obs, expert_dones = self._step_through_scene(
-                filename=filename, expert_actions_df=expert_actions_df, mode="expert_discrete"
-            )
+            expert_obs, expert_acts, expert_next_obs, expert_dones = self._step_through_scene(filename)
+            
             # (4) Return
             for obs, act, next_obs, done in zip(expert_obs, expert_acts, expert_next_obs, expert_dones):
                 yield (obs, act, next_obs, done)
@@ -80,10 +81,6 @@ class TrajectoryIterator(IterableDataset):
         # Create simulation
         sim = Simulation(f"{self.data_path}/{filename}", dict(self.config.scenario))
         scenario = sim.getScenario()
-
-        # Set expert-controlled to False
-        for obj in scenario.getObjects():
-            obj.expert_control = True
 
         objects_that_moved = scenario.getObjectsThatMoved()
         objects_of_interest = [
@@ -128,7 +125,7 @@ class TrajectoryIterator(IterableDataset):
 
         return df_actions
 
-    def _step_through_scene(self, filename: str, expert_actions_df: pd.DataFrame = None, mode: str = "expert"):
+    def _step_through_scene(self, filename: str, expert_actions_df: pd.DataFrame = None):
         """
         Step through a traffic scenario using a set of discretized expert actions
         to construct a set of corrected state-action pairs. Note: A state-action pair
@@ -137,10 +134,17 @@ class TrajectoryIterator(IterableDataset):
         # Reset
         next_obs_dict = self.env.reset(filename)
         num_agents = len(next_obs_dict.keys())
-        id_to_idx_mapping = {agent.id: idx for idx, agent in enumerate(self.env.controlled_vehicles)}
-
+        agent_ids = list(next_obs_dict.keys())
+        dead_agent_ids = []
+        veh_id_to_idx = {veh_id: idx for idx, veh_id in enumerate(agent_ids)}
+        last_info_dicts = {agent_id: {} for agent_id in agent_ids}
+    
         # Storage
-        expert_action_arr = np.full((self.config.episode_length, num_agents), fill_value=np.nan)
+        expert_action_arr = np.full(
+            (self.config.episode_length, num_agents), 
+            fill_value=np.nan,
+        )
+
         obs_arr = np.full(
             (
                 self.config.episode_length,
@@ -151,94 +155,67 @@ class TrajectoryIterator(IterableDataset):
         )
         next_obs_arr = np.full_like(obs_arr, fill_value=np.nan)
         dones_arr = np.full_like(expert_action_arr, fill_value=np.nan)
-
         ep_rewards = np.zeros(num_agents)
-        dead_agent_ids = []
 
-        # Select agents of interest
-        agents_of_interest = self.env.controlled_vehicles
-
-        # Set control mode
-        if mode == "expert_discrete":
-            for agent in agents_of_interest:
-                agent.expert_control = False
-        elif mode == "expert":
-            for agent in agents_of_interest:
-                agent.expert_control = True
-
-        for timestep in range(self.config.episode_length):
-            logging.debug(f"t = {timestep}")
-
+        # Step through scene
+        for t_idx in range(self.config.episode_length):
+        
             action_dict = {}
-            if expert_actions_df is not None:
-                # Select action from expert grid actions dataframe
-                for veh_obj in agents_of_interest:
-                    if veh_obj.id in next_obs_dict:
-                        action = int(expert_actions_df[veh_obj.id].loc[self.env.step_num])
-                        action_dict[veh_obj.id] = action
-
-            # Step through scene in expert-control mode
-            else:
-                for veh_obj in agents_of_interest:
-                    veh_obj.expert_control = True
-
+            
+            if expert_actions_df is None:
+                for veh_obj in self.env.controlled_vehicles:
+                    
                     # Get (continuous) expert action
                     expert_action = self.env.scenario.expert_action(veh_obj, self.env.step_num)
 
                     # Discretize expert action
                     if expert_action is not None:
-                        expert_accel, expert_steering, _ = expert_action.numpy()
-                        # Map actions to nearest grid indices and joint action
-                        accel_grid_val, _ = self._find_closest_index(self.accel_grid, expert_accel)
-                        steering_grid_val, _ = self._find_closest_index(self.steering_grid, expert_steering)
-                        expert_action_idx = self.actions_to_joint_idx[accel_grid_val, steering_grid_val][0]
+                        if expert_action.steering == expert_action.steering:
+                            expert_accel, expert_steering, _ = expert_action.numpy()
+                            
+                            # Map actions to nearest grsid indices and joint action
+                            acc_grid_idx = np.argmin(np.abs(self.env.accel_grid - expert_accel))
+                            ste_grid_idx = np.argmin(np.abs(self.env.steering_grid - expert_steering))
 
-                        action_dict[veh_obj.id] = expert_action_idx
-
-                        logging.debug(f"-- veh_id = {veh_obj.id} --")
-                        logging.debug(
-                            f"true_exp_acc = {expert_action.acceleration:.4f}; true_exp_steer = {expert_action.steering:.4f}"
-                        )
-                        logging.debug(
-                            f"disc_exp_acc = {accel_grid_val:.4f}; disc_exp_steer = {steering_grid_val:.4f} \n"
-                        )
-
-                        if expert_action.acceleration is np.nan or expert_action.steering is np.nan:
-                            logging.debug(f"-- veh_id = {veh_obj.id} --")
-                            logging.debug(
-                                f"true_exp_acc = {expert_action.acceleration:.4f}; true_exp_steer = {expert_action.steering:.4f}"
-                            )
-                            logging.debug(
-                                f"disc_exp_acc = {accel_grid_val:.4f}; disc_exp_steer = {steering_grid_val:.4f} \n"
-                            )
-                            raise ValueError("Expert action is NaN!")
-                    else:
+                            expert_action_idx = self.env.actions_to_idx[
+                                self.env.accel_grid[acc_grid_idx],
+                                self.env.steering_grid[ste_grid_idx],
+                            ][0]
+                            action_dict[veh_obj.id] = expert_action_idx
+                        
+                    else: # Skip if expert action is None or nan
                         continue
+            else:
+                # Select action from expert grid actions dataframe
+                for veh_obj in self.env.controlled_vehicles:
+                    if veh_obj.id in next_obs_dict:
+                        action = int(expert_actions_df[veh_obj.id].loc[self.env.step_num])
+                        action_dict[veh_obj.id] = action
 
             # Store actions + obervations of living agents
-            for veh_obj in agents_of_interest:
+            for veh_obj in self.env.controlled_vehicles:
                 if veh_obj.id not in dead_agent_ids:
-                    veh_idx = id_to_idx_mapping[veh_obj.id]
-                    obs_arr[timestep, veh_idx, :] = next_obs_dict[veh_obj.id]
+                    veh_idx = veh_id_to_idx[veh_obj.id]
+                    obs_arr[t_idx, veh_idx, :] = next_obs_dict[veh_obj.id]
 
                     if veh_obj.id in action_dict:
-                        expert_action_arr[timestep, veh_idx] = action_dict[veh_obj.id]
+                        expert_action_arr[t_idx, veh_idx] = action_dict[veh_obj.id]
 
             # Execute actions
             next_obs_dict, rew_dict, done_dict, info_dict = self.env.step(action_dict)
 
             # The i'th observation `next_obs[i]` in this array is the observation
             # after the agent has taken action `acts[i]`.
-            for veh_obj in agents_of_interest:
-                veh_idx = id_to_idx_mapping[veh_obj.id]
+            for veh_obj in self.env.controlled_vehicles:
+                veh_idx = veh_id_to_idx[veh_obj.id]
                 if veh_obj.id not in dead_agent_ids:
-                    next_obs_arr[timestep, veh_idx, :] = next_obs_dict[veh_obj.id]
-                    dones_arr[timestep, veh_idx] = done_dict[veh_obj.id]
+                    next_obs_arr[t_idx, veh_idx, :] = next_obs_dict[veh_obj.id]
+                    dones_arr[t_idx, veh_idx] = done_dict[veh_obj.id]
 
             # Update rewards
-            for veh_obj in agents_of_interest:
+            for veh_obj in self.env.controlled_vehicles:
                 if veh_obj.id in rew_dict:
-                    veh_idx = id_to_idx_mapping[veh_obj.id]
+                    veh_idx = veh_id_to_idx[veh_obj.id]
                     ep_rewards[veh_idx] += rew_dict[veh_obj.id]
 
             # Update dead agents
@@ -246,6 +223,9 @@ class TrajectoryIterator(IterableDataset):
                 if is_done and veh_id not in dead_agent_ids:
                     dead_agent_ids.append(veh_id)
 
+            if done_dict["__all__"]:  # If all agents are done or episode is done
+                break
+        
         # Save accumulated normalized reward
         self.ep_norm_rewards.append(sum(ep_rewards) / num_agents)
 
@@ -284,39 +264,3 @@ class TrajectoryIterator(IterableDataset):
         """Find the nearest value in the action grid for a given expert action."""
         indx = np.argmin(np.abs(action_grid - action))
         return action_grid[indx], indx
-
-
-if __name__ == "__main__":
-    env_config = load_config("env_config")
-    env_config.num_files = 1
-
-    # Change action space
-    env_config.accel_discretization = 5
-    env_config.accel_lower_bound = -3
-    env_config.accel_upper_bound = 3
-    env_config.steering_lower_bound = -0.7  # steer right
-    env_config.steering_upper_bound = 0.7  # steer left
-    env_config.steering_discretization = 31
-
-    # Create iterator
-    waymo_iterator = TrajectoryIterator(
-        apply_obs_correction=False,
-        data_path=env_config.data_path,
-        env_config=env_config,
-        file_limit=env_config.num_files,
-    )
-
-    # Rollout to get obs-act-obs-done trajectories
-    rollouts = next(
-        iter(
-            DataLoader(
-                waymo_iterator,
-                batch_size=10_000,  # Number of samples to generate
-                pin_memory=True,
-            )
-        )
-    )
-
-    obs, acts, next_obs, dones = rollouts
-
-    print("hi")

@@ -1,9 +1,9 @@
 # Model
 save_model: true # Save model after training
-model_name: human_policy_D99   # Name of saved model
+model_name: human_policy   # Name of saved model
 save_model_path: ./models/il/ # Path to save model
 
 # Train
-total_samples: 5000 # Number of obs-act-next_obs-done pairs to generate
-n_epochs: 65 # Training epochs
+total_samples: 20_000 # Number of obs-act-next_obs-done pairs to generate
+n_epochs: 50 # Training epochs
 net_arch: [256, 128] # Network architecture

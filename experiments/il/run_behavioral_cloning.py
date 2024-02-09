@@ -10,12 +10,11 @@ from imitation.algorithms import bc
 from imitation.data.types import Transitions
 from stable_baselines3.common import policies
 from torch.utils.data import DataLoader
-
+from evaluation.policy_evaluation import evaluate_policy
 import wandb
 from utils.config import load_config
 from utils.imitation_learning.waymo_iterator import TrajectoryIterator
 from utils.string_utils import datetime_to_str
-
 
 class CustomFeedForwardPolicy(policies.ActorCriticPolicy):
     """A feed forward policy network with a number of hidden units.
@@ -37,49 +36,33 @@ logging.basicConfig(level=logging.INFO)
 # Device TODO: Add support for CUDA
 device = "cpu"
 
-
 if __name__ == "__main__":
-    NUM_TRAIN_FILES = 1000
-    MAX_EVAL_FILES = 5
+    NUM_TRAIN_FILES = 100
     
     # Create run
-    run = wandb.init(
+    run = wandb.init( 
         project="eval_il_policy",
         sync_tensorboard=True,
         group=f"BC_S{NUM_TRAIN_FILES}",
     )
 
-    logging.info(f"Creating human policy from {NUM_TRAIN_FILES} files...")
+    logging.info(f"Training human policy on {NUM_TRAIN_FILES} files.")
 
     # Configs
     video_config = load_config("video_config")
     bc_config = load_config("bc_config")
     env_config = load_config("env_config")
     exp_config = load_config("exp_config")
-    env_config.num_files = NUM_TRAIN_FILES
-    
-    # SET TO NEW DATA PATH + specific files
-    env_config.data_path = 'data_new/train_no_tl'
-    train_file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
-    files = sorted([os.path.basename(file) for file in train_file_paths])
-
-    # New action space
-    env_config.accel_discretization = 9
-    env_config.accel_lower_bound = -5.0
-    env_config.accel_upper_bound = 5.0
-    env_config.steering_lower_bound = -1.5  # steer right
-    env_config.steering_upper_bound = 1.5  # steer left
-    env_config.steering_discretization = 11
+    bc_config.num_files = NUM_TRAIN_FILES
+    env_config.use_av_only = True
 
     logging.info("(1/4) Create iterator...")
-
-    # Create iterator
+    
     waymo_iterator = TrajectoryIterator(
         env_config=env_config,
         data_path=env_config.data_path,
-        files=files,
         apply_obs_correction=False,
-        file_limit=env_config.num_files,
+        file_limit=bc_config.num_files,
     )
 
     logging.info("(2/4) Generating dataset from traffic scenes...")
@@ -121,8 +104,7 @@ if __name__ == "__main__":
         rng=rng,
         device=torch.device("cpu"),
     )
-
-    logging.info(f"IL policy: \n{bc_trainer.policy}")
+    
     logging.info("(3/4) Training...")
 
     # Train
@@ -130,17 +112,28 @@ if __name__ == "__main__":
         n_epochs=bc_config.n_epochs,
     )
 
-    logging.info("(4/4) Save...")
-
+    logging.info("(4/4) Evaluate policy...")
+    
     # Evaluate, get scores
-    # Scenes on which to evaluate the models
-    # Make sure file order is fixed so that we evaluate on the same files used for training
-    train_file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
-    train_eval_files = sorted([os.path.basename(file) for file in train_file_paths])[:NUM_TRAIN_FILES]
-
+    df_bc = evaluate_policy(
+        env_config=env_config,
+        controlled_agents=1,
+        data_path=env_config.data_path,
+        mode="policy",
+        policy=bc_trainer.policy,
+        select_from_k_scenes=NUM_TRAIN_FILES,
+        num_episodes=500,
+        use_av_only=True,
+    )
+    
+    logging.info(f'--- Results: BEHAVIORAL CLONING ---')
+    print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    
+    # Save policy
     if bc_config.save_model:
         # Save model
         datetime_ = datetime_to_str(dt=datetime.now())
         bc_trainer.policy.save(
-            path=f"{bc_config.save_model_path}{bc_config.model_name}_S{NUM_TRAIN_FILES}_{datetime_}.pt"
+            path=f"{bc_config.save_model_path}{bc_config.model_name}_D{waymo_iterator.action_space.n}_S{NUM_TRAIN_FILES}_{datetime_}.pt"
         )
+        logging.info("(4/4) Saved policy!")
