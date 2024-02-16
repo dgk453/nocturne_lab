@@ -103,65 +103,53 @@ def plot_lines(line1, line2, title="Line Plot"):
     ax.legend()
     plt.show()
 
-def check_for_intersections(path_veh_i, path_veh_j, veh_id_to_intersecting_paths_dict, veh_i, veh_j, veh_id_to_time_diff):
-    nonnan_ids = ~np.logical_or(np.isnan(path_veh_i), np.isnan(path_veh_j)).any(axis=1)
-    if nonnan_ids.sum() > 1:
-        intersect_and_update(
-            path_veh_i[nonnan_ids], 
-            path_veh_j[nonnan_ids], 
-            veh_id_to_intersecting_paths_dict, 
-            veh_i, 
-            veh_j,
-            veh_id_to_time_diff
-        )
 
-def intersect_and_update(path_veh_i, path_veh_j, veh_id_to_intersecting_paths_dict, veh_i, veh_j, veh_id_to_time_diff):
-    line1, line2 = LineString(path_veh_i), LineString(path_veh_j)
-    if line1.intersects(line2):
-        intersection = line1.intersection(line2)
-        points = [intersection] if isinstance(intersection, Point) else list(intersection.geoms) if isinstance(intersection, MultiPoint) else []
-        
-        step_dists = []
-        for point in points:
-            intersection_point = np.array([point.x, point.y])
-            closest_index_i = find_closest_point_index(path_veh_i, intersection_point)
-            closest_index_j = find_closest_point_index(path_veh_j, intersection_point)
-            step_dists.append(abs(closest_index_i - closest_index_j))
-        
-        if step_dists:
-            min_step_dist = min(step_dists)
-            veh_id_to_intersecting_paths_dict[veh_i] += 1
-            veh_id_to_intersecting_paths_dict[veh_j] += 1
-            
-            # Always store the minimum time difference
-            if veh_id_to_time_diff[veh_i] > 0:
-                veh_id_to_time_diff[veh_i] = min(veh_id_to_time_diff[veh_i], min_step_dist)
-            else:
-                veh_id_to_time_diff[veh_i] = min_step_dist
-            
-def compile_scene_info(veh_id_to_intersecting_paths_dict, veh_id_to_time_diff):
-    return {
-        "veh_id": list(veh_id_to_intersecting_paths_dict.keys()),
-        "intersecting_paths": list(veh_id_to_intersecting_paths_dict.values()),
-        "min_step_diff": list(veh_id_to_time_diff.values()),
-        "total_intersecting_paths": sum(veh_id_to_intersecting_paths_dict.values())
-    }
-
-def process_vehicle_combinations(expert_trajectories, vehicle_id_dict, veh_id_to_intersecting_paths_dict):
-    veh_id_to_time_diff = {veh_id: np.nan for veh_id in vehicle_id_dict}
+def process_vehicle_combinations(expert_trajectories, vehicle_id_dict, allowed_time_window):
+    
+    veh_id_to_intersecting_paths_dict = {veh_id: 0 for veh_id in vehicle_id_dict}
+    veh_id_to_time_diff = {veh_id: 500 for veh_id in vehicle_id_dict}
+    
     for veh_i, veh_j in combinations(vehicle_id_dict, 2):
+        
+        # Get paths
         path_veh_i, path_veh_j = expert_trajectories[vehicle_id_dict[veh_i], :, :], expert_trajectories[vehicle_id_dict[veh_j], :, :]
-        check_for_intersections(
-            path_veh_i, 
-            path_veh_j, 
-            veh_id_to_intersecting_paths_dict, 
-            veh_i, 
-            veh_j, 
-            veh_id_to_time_diff
-        )
-    return veh_id_to_time_diff
+        nonnan_ids = ~np.logical_or(np.isnan(path_veh_i), np.isnan(path_veh_j)).any(axis=1)   
+        path_veh_i = path_veh_i[nonnan_ids]
+        path_veh_j = path_veh_j[nonnan_ids]
+        
+        if nonnan_ids.sum() > 1:
+            line1, line2 = LineString(path_veh_i), LineString(path_veh_j)
+            
+            if line1.intersects(line2):
+                intersection = line1.intersection(line2)
+                points = [intersection] if isinstance(intersection, Point) else list(intersection.geoms) if isinstance(intersection, MultiPoint) else []
+                
+                # Add the minimum temporal distance between the two paths
+                step_dists = []
+                for point in points:
+                    intersection_point = np.array([point.x, point.y])
+                    closest_index_i = find_closest_point_index(path_veh_i, intersection_point)
+                    closest_index_j = find_closest_point_index(path_veh_j, intersection_point)
+                    step_dists.append(abs(closest_index_i - closest_index_j))
+                    
+                # Increment the number of intersecting paths for both vehicles
+                if min(step_dists) < allowed_time_window:
+                    veh_id_to_intersecting_paths_dict[veh_i] += 1
+                    veh_id_to_intersecting_paths_dict[veh_j] += 1 
+                
+                if step_dists:
+                    min_step_dist = min(step_dists)
+                    # Always store the minimum time difference
+                    if veh_id_to_time_diff[veh_i] != 500 or veh_id_to_time_diff[veh_j] != 500:
+                        veh_id_to_time_diff[veh_i] = min(veh_id_to_time_diff[veh_i], min_step_dist)
+                        veh_id_to_time_diff[veh_j] = min(veh_id_to_time_diff[veh_j], min_step_dist)
+                    else:
+                        veh_id_to_time_diff[veh_i] = min_step_dist
+                        veh_id_to_time_diff[veh_j] = min_step_dist
+                        
+    return veh_id_to_intersecting_paths_dict, veh_id_to_time_diff
 
-def get_intersecting_path_dict(env, traffic_scenes, save_dict=True, filename="intersecting_paths.pkl"):
+def get_intersecting_path_dict(env, traffic_scenes, allowed_time_window=50, save_dict=True, filename="intersecting_paths.pkl"):
     """Main function to obtain the number of intersecting paths per scene and agent id."""
     scene_intersecting_paths_dict = {}
     for traffic_scene in tqdm(traffic_scenes):
@@ -169,10 +157,22 @@ def get_intersecting_path_dict(env, traffic_scenes, save_dict=True, filename="in
         if not vehicle_id_dict:
             continue
         
-        veh_id_to_intersecting_paths_dict = {veh_id: 0 for veh_id in vehicle_id_dict}
-        veh_id_to_time_diff = process_vehicle_combinations(expert_trajectories, vehicle_id_dict, veh_id_to_intersecting_paths_dict)
-
-        scene_info = compile_scene_info(veh_id_to_intersecting_paths_dict, veh_id_to_time_diff)
+        veh_id_to_intersecting_paths_dict, veh_id_to_time_diff = process_vehicle_combinations(
+            expert_trajectories, 
+            vehicle_id_dict, 
+            allowed_time_window,
+        )
+        
+        # Map large numbers to np.nan 
+        t_diff = list(veh_id_to_time_diff.values())
+        t_diff_nan = [np.nan if x == 500 else x for x in t_diff]
+        
+        scene_info = {
+            "veh_id": list(veh_id_to_intersecting_paths_dict.keys()),
+            "intersecting_paths": list(veh_id_to_intersecting_paths_dict.values()),
+            "min_step_diff": t_diff_nan,
+            "total_intersecting_paths": sum(veh_id_to_intersecting_paths_dict.values())
+        }
         scene_intersecting_paths_dict[traffic_scene] = scene_info
 
     if save_dict:
@@ -187,11 +187,13 @@ if __name__ == "__main__":
     
     # Load config
     env_config = load_config("env_config")
+    env_config.max_num_vehicles = 500
+    
     # Set data path for which we want to obtain the number of intersecting paths
-    env_config.data_path = "data_new/train_no_tl/"
+    env_config.data_path = "data/train_no_tl/"
     
     # Scenes on which to evaluate the models
-    # Make sure file order is fixed so that we evalu on the same files used for training
+    # Make sure file order is fixed so that we evalu on the same f iles used for training
     file_paths = glob.glob(f"{env_config.data_path}" + "/tfrecord*")
     files = sorted([os.path.basename(file) for file in file_paths])
     

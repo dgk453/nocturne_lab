@@ -169,7 +169,7 @@ class CustomMultiAgentCallback(BaseCallback):
         wandb.save(self.path, base_path=self.model_base_path)
         logging.info(f"Saved policy on step {self.num_timesteps} / iter {self.iteration} at: \n {self.path}")
 
-    def _evaluate_policy(self, policy, dataset="train", name="", det_mode=True, data_folder="data_new", num_files=100):
+    def _evaluate_policy(self, policy, dataset="train", name="", det_mode=True, data_folder="data", num_files=100):
         """Evaluate policy in a number of scenes."""
 
         env_config = self.env_config.copy()

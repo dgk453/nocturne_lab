@@ -32,31 +32,32 @@ class CustomFeedForwardPolicy(policies.ActorCriticPolicy):
         super().__init__(*args, **kwargs, net_arch=bc_config.net_arch)
 
 
-logging.basicConfig(level=logging.INFO)
-
 # Device TODO: Add support for CUDA
 device = "cpu"
+logging.basicConfig(level=logging.INFO)
 
-if __name__ == "__main__":
-    NUM_TRAIN_FILES = 100
-    NUM_EVAL_EPISODES = 100
+def train_bc(env_config, bc_config, num_train_files, use_av_only, train_epochs, num_eval_episodes=100):
+    """Train a policy on Waymo Open Dataset using behavioral cloning.
     
-    # Create run
+    Args:
+    - env_config: (dict) Environment configuration
+    - bc_config: (dict) Behavioral cloning configuration
+    - num_train_files: (int) Number of training files
+    - use_av_only: (bool) Use only the AV vehicle to generate the dataset
+    - num_eval_episodes: (int) Number of episodes to evaluate the policy
+    """
+    
     run = wandb.init( 
         project="eval_il_policy",
         sync_tensorboard=True,
-        group=f"BC_S{NUM_TRAIN_FILES}",
+        group=f"BC_S{num_train_files}",
     )
 
-    logging.info(f"Training human policy on {NUM_TRAIN_FILES} files.")
+    logging.info(f"Training human policy on {num_train_files} files.")
 
-    # Configs
-    video_config = load_config("video_config")
-    bc_config = load_config("bc_config")
-    env_config = load_config("env_config")
-    exp_config = load_config("exp_config")
-    bc_config.num_files = NUM_TRAIN_FILES
-    env_config.use_av_only = True
+    # Settings 
+    bc_config.num_files = num_train_files
+    env_config.use_av_only = use_av_only
 
     logging.info("(1/4) Create iterator...")
     
@@ -111,7 +112,8 @@ if __name__ == "__main__":
 
     # Train
     bc_trainer.train(
-        n_epochs=bc_config.n_epochs,
+        n_epochs=train_epochs,
+        log_interval=15_000,
     )
 
     logging.info("(4/4) Evaluate policy...")
@@ -123,25 +125,39 @@ if __name__ == "__main__":
         data_path=env_config.data_path,
         mode="policy",
         policy=bc_trainer.policy,
-        select_from_k_scenes=NUM_TRAIN_FILES,
-        num_episodes=NUM_EVAL_EPISODES,
+        select_from_k_scenes=num_train_files,
+        num_episodes=num_eval_episodes,
+        use_av_only=True,
+    )
+    
+    logging.info(f'--- Results: BC; AV ONLY ---')
+    print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    
+    # Evaluate, get scores
+    df_bc_all = evaluate_policy(
+        env_config=env_config,
+        controlled_agents=1,
+        data_path=env_config.data_path,
+        mode="policy",
+        policy=bc_trainer.policy,
+        select_from_k_scenes=num_train_files,
+        num_episodes=num_eval_episodes,
         use_av_only=False,
     )
     
-    logging.info(f'--- Results: BEHAVIORAL CLONING ---')
-    print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    logging.info(f'--- Results: BC; RANDOM VEHICLE ---')
+    print(df_bc_all[["goal_rate", "off_road", "veh_veh_collision"]].mean())
     
     # Save policy
     if bc_config.save_model:
         # Save model
         datetime_ = datetime_to_str(dt=datetime.now())
         save_path = f"{bc_config.save_model_path}" 
-        name = f"{bc_config.model_name}_D{waymo_iterator.action_space.n}_S{NUM_TRAIN_FILES}_{datetime_}"
+        name = f"{bc_config.model_name}_D{waymo_iterator.action_space.n}_S{num_train_files}_{datetime_}"
         bc_trainer.policy.save(
             path=f'{save_path}/{name}.pt'
         )
         logging.info("(4/4) Saved policy!")
-        
     
         # BEHAVIORAL CLONING
         human_policy = load_policy(
@@ -155,11 +171,37 @@ if __name__ == "__main__":
             data_path=env_config.data_path,
             mode="policy",
             policy=human_policy,
-            select_from_k_scenes=NUM_TRAIN_FILES,
-            num_episodes=NUM_EVAL_EPISODES,
-            use_av_only=False,
+            select_from_k_scenes=num_train_files,
+            num_episodes=num_eval_episodes,
+            use_av_only=True,
         )
         
         logging.info(f'--- Results: BEHAVIORAL CLONING LOADED ---')
         print(df_bc_loaded[["goal_rate", "off_road", "veh_veh_collision"]].mean())
         
+
+if __name__ == "__main__":
+    
+    av_settings = [True, False]
+    train_epochs = [20, 50]
+    
+    for use_av_only, n_epochs in zip(av_settings, train_epochs):
+        
+        logging.info(f'---- Use AV only: {use_av_only} ----')
+        
+        # Configs
+        bc_config = load_config("bc_config")
+        env_config = load_config("env_config")
+        
+        train_bc(
+            num_train_files=100,
+            train_epochs=n_epochs,
+            use_av_only=use_av_only,
+            env_config=env_config,
+            bc_config=bc_config,
+            num_eval_episodes=1000, 
+        )
+        
+        
+    
+    

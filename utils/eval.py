@@ -22,7 +22,6 @@ class EvaluatePolicy:
     def __init__(
         self,
         env_config,
-        exp_config,
         policy,
         eval_files=None,
         reg_coef=None,
@@ -30,12 +29,11 @@ class EvaluatePolicy:
         with_replacement=True,
         return_trajectories=False,
         single_agent=False,
-        file_limit=1000,
+        file_limit=10_000,
     ):
         self.env_config = env_config
         if single_agent:
             self.env_config.max_num_vehicles = 1
-        self.exp_config = exp_config
         self.policy = policy
         self.eval_files = self._get_files(eval_files, file_limit)
         self.reg_coef = reg_coef
@@ -52,37 +50,8 @@ class EvaluatePolicy:
         logging.info(f"\n Evaluating policy on {len(self.eval_files)} files...")
 
         # Create tables
-        df_eval = pd.DataFrame(
-            columns=[
-                "reg_coef",
-                "traffic_scene",
-                "agent_id",
-                "act_acc",
-                "accel_val_mae",
-                "steer_val_mae",
-                "pos_rmse",
-                "speed_mae",
-                "goal_rate",
-                "off_road",
-                "veh_veh_collision",
-            ]
-        )
-
-        df_trajs = pd.DataFrame(
-            columns=[
-                "traffic_scene",
-                "timestep",
-                "agent_id",
-                "policy_pos_x",
-                "policy_pos_y",
-                "policy_speed",
-                "policy_act",
-                "expert_pos_x",
-                "expert_pos_y",
-                "expert_speed",
-                "expert_act",
-            ]
-        )
+        df_eval = pd.DataFrame()
+        df_trajs = pd.DataFrame()
 
         for file in tqdm(self.eval_files):
             logging.debug(f"Evaluating policy on {file}...")
@@ -134,7 +103,7 @@ class EvaluatePolicy:
             # Store metrics
             scene_perf = pd.DataFrame(
                 {
-                    "reg_coef": np.repeat(self.reg_coef, len(self.agent_names)),
+                    "Reg. weight": np.repeat(self.reg_coef, len(self.agent_names)),
                     "traffic_scene": file,
                     "agent_id": self.agent_names,
                     "act_acc": action_accuracies,

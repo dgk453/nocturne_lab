@@ -828,7 +828,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     env_config = load_config("env_config")
-    env_config.data_path = "data_new/train_no_tl"
+    env_config.data_path = "data/train_no_tl"
     env_config.num_files = 2000
     env_config.max_num_vehicles = 200
     env_config.num_files = 50
