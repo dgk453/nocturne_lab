@@ -71,9 +71,8 @@ nocturne/_version.py
 temp/
 
 # Waymo dataset
-data/
-data_full/
-data_new/
+data/train_no_tl/
+data/valid_no_tl/
 
 # Logging output
 logs/
