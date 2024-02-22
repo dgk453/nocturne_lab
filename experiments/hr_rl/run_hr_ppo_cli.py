@@ -71,10 +71,10 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 
 
 def run_hr_ppo(
-    sweep_name: str = exp_config.group,
+    sweep_name: str = "test",
     ent_coef: float = 0.001,
     vf_coef: float = 0.5,
-    mini_batch_size: int = 512,
+    mini_batch_size: int = 256,
     seed: int = 42,
     lr: float = 3e-4,
     arch_road_objects: str = "large",
@@ -85,10 +85,10 @@ def run_hr_ppo(
     randomize_goals: int = 0,
     rand_goals_timesteps: str = 'A',
     total_timesteps: int = 60_000_000,
-    num_files: int = 100,
+    num_files: int = 10,
     reg_weight: float = 0.0,
     reg_weight_decay: str = "None",
-    num_controlled_veh: int = 1,
+    num_controlled_veh: int = 50,
     pretrained_model: str = "None",
 ) -> None:
     """Train RL agent using PPO with CLI arguments."""
