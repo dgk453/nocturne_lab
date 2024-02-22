@@ -1,9 +1,9 @@
 project: new_env
-group: fixed_experts
+group: base_S100_A1
 env_id: Nocturne
 seed: 42
 track_wandb: true
-wandb_init_videos: ['expert']
+wandb_init_videos: []
 where_am_i: headless_machine   # Change to "headless_machine" when you're on a cluster or desktop
 exp_name: Nocturne
 verbose: 0
@@ -18,7 +18,7 @@ ma_callback:
   save_video: true
   model_save_freq: 250 # In iterations (one iter ~ (num_agents x n_steps))
   record_n_scenes: 10 # Number of different scenes to render
-  video_save_freq: 20 # Make a video every k iterations (100 iters ~ 1M steps)
+  video_save_freq: 50_000 # Make a video every k iterations (100 iters ~ 1M steps)
   video_deterministic: true
   eval_freq: 100 # Evaluate full RL task in deterministic mode (turn off intermediate goals)
 
@@ -35,7 +35,8 @@ learn:
 
 # human-regularized RL
 reg_weight: 0.0
-human_policy_path: models/il/human_policy_D403_S500_02_08_21_30.pt
+human_policy_path: models/il/human_policy_D651_S500_02_18_20_05_AV_ONLY.pt
+reg_weight_decay_schedule: None
 
 # Model arch
 model_config:

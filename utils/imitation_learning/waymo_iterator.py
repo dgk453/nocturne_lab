@@ -22,6 +22,14 @@ logging.basicConfig(level="DEBUG")
 
 class TrajectoryIterator(IterableDataset):
     def __init__(self, data_path, env_config, apply_obs_correction=False, with_replacement=True, file_limit=-1):
+        """Imitation-compatible iterator for generating expert trajectories in Waymo scenes.
+        Args:
+        - data_path: (str) Path to the Waymo Open Dataset files
+        - env_config: (dict) Environment configuration
+        - apply_obs_correction: (bool) Apply observation correction
+        - with_replacement: (bool) Sample with replacement
+        - file_limit: (int) Number of files to sample from
+        """
         self.data_path = Path(data_path)
         self.config = env_config
         self.apply_obs_correction = apply_obs_correction
@@ -29,10 +37,9 @@ class TrajectoryIterator(IterableDataset):
         self.with_replacement = with_replacement
        
         # Select traffic scenes to sample from
-        self.valid_veh_dict = json.load(open(f"{self.data_path}/valid_files.json", "r", encoding="utf-8"))
         file_paths = self.data_path.glob('*.json')
         self.file_names = sorted([os.path.basename(file) for file in file_paths])[:file_limit]
-
+        
         self._set_discrete_action_space()
         self.observation_space = gym.spaces.Box(-np.inf, np.inf, self.env.observation_space.shape, np.float32)
         self.action_space = gym.spaces.Discrete(len(self.actions_to_joint_idx))
@@ -62,14 +69,13 @@ class TrajectoryIterator(IterableDataset):
                 filename = self.file_names.pop()
 
             # (2) Obtain discretized expert actions
-            #TODO: @dc fix with only avs
-            # if self.apply_obs_correction:
-            #     expert_actions_df = self._discretize_expert_actions(filename)
-            # else:
-            expert_actions_df = None
+            if self.apply_obs_correction:
+                expert_actions_df = self._discretize_expert_actions(filename)
+            else:
+                expert_actions_df = None
 
             # (3) Obtain observations
-            expert_obs, expert_acts, expert_next_obs, expert_dones = self._step_through_scene(filename)
+            expert_obs, expert_acts, expert_next_obs, expert_dones = self._step_through_scene(filename, expert_actions_df)
             
             # (4) Return
             for obs, act, next_obs, done in zip(expert_obs, expert_acts, expert_next_obs, expert_dones):
@@ -79,27 +85,26 @@ class TrajectoryIterator(IterableDataset):
         """Discretize human expert actions in given traffic scene."""
 
         # Create simulation
-        sim = Simulation(f"{self.data_path}/{filename}", dict(self.config.scenario))
-        scenario = sim.getScenario()
+        env = BaseEnv(config=self.config)
+        env.reset(filename)
 
-        objects_that_moved = scenario.getObjectsThatMoved()
-        objects_of_interest = [
-            obj
-            for obj in scenario.getVehicles()
-            if obj in objects_that_moved and obj.getID() not in self.valid_veh_dict[filename]
-        ]
+        # Get objects of interest
+        objects_of_interest = env.controlled_vehicles
 
         # Setup dataframe to store actions
         actions_dict = {}
         for agent in objects_of_interest:
-            actions_dict[agent.id] = np.zeros(self.config.episode_length)
+            actions_dict[agent.id] = np.full(self.config.episode_length, fill_value=np.nan)
 
         df_actions = pd.DataFrame(actions_dict)
 
-        for timestep in range(self.config.episode_length + self.config.warmup_period):
+        for _ in range(self.config.episode_length - self.config.warmup_period):
+            
             for veh_obj in objects_of_interest:
+                # Set in expert control mode
+                veh_obj.expert_control = True
                 # Get (continuous) expert action
-                expert_action = scenario.expert_action(veh_obj, sim.step_num)
+                expert_action = env.scenario.expert_action(veh_obj, env.step_num)
 
                 # Check for invalid actions (None) (because no value available for taking
                 # derivative) or because the vehicle is at an invalid state
@@ -114,14 +119,18 @@ class TrajectoryIterator(IterableDataset):
 
                 expert_action_idx = self.actions_to_joint_idx[accel_grid_val, steering_grid_val][0]
 
-                if expert_action_idx is None:
+                if expert_action_idx is None or expert_action.acceleration != expert_action.acceleration or expert_action.steering != expert_action.steering:
                     logging.debug("Expert action is None!")
+                    continue
 
-                # Store
-                if timestep >= self.config.warmup_period:
-                    df_actions.loc[timestep - self.config.warmup_period][veh_obj.getID()] = expert_action_idx
+                # Store expert action
+                df_actions.loc[env.step_num][veh_obj.id] = expert_action_idx
 
-            sim.step(self.config.dt)
+            # Step in teleport mode
+            _, _, done_dict, _ = env.step({})
+            
+            if done_dict["__all__"]:
+                break   
 
         return df_actions
 
@@ -137,7 +146,6 @@ class TrajectoryIterator(IterableDataset):
         agent_ids = list(next_obs_dict.keys())
         dead_agent_ids = []
         veh_id_to_idx = {veh_id: idx for idx, veh_id in enumerate(agent_ids)}
-        last_info_dicts = {agent_id: {} for agent_id in agent_ids}
     
         # Storage
         expert_action_arr = np.full(
@@ -189,8 +197,13 @@ class TrajectoryIterator(IterableDataset):
                 # Select action from expert grid actions dataframe
                 for veh_obj in self.env.controlled_vehicles:
                     if veh_obj.id in next_obs_dict:
-                        action = int(expert_actions_df[veh_obj.id].loc[self.env.step_num])
-                        action_dict[veh_obj.id] = action
+                        action_idx = expert_actions_df[veh_obj.id].loc[self.env.step_num]
+                        # If not nan
+                        if action_idx == action_idx:
+                            action_dict[veh_obj.id] = int(action_idx)
+                        else:
+                            valid_values = expert_actions_df[veh_obj.id].dropna().values
+                            action_dict[veh_obj.id] = np.random.choice(valid_values)
 
             # Store actions + obervations of living agents
             for veh_obj in self.env.controlled_vehicles:

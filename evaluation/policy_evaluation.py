@@ -239,9 +239,11 @@ if __name__ == "__main__":
     
     # Configurations
     CONTROLLED_AGENTS = 1
-    SELECT_FROM_K_SCENES = 2000
-    NUM_EPISODES = 500
+    SELECT_FROM_K_SCENES = 500
+    NUM_EPISODES = 1000
     USE_AV_ONLY = False
+    
+    print(f'Use av only: {USE_AV_ONLY}')
 
     # Load environment config
     env_config = load_config("env_config")
@@ -249,19 +251,19 @@ if __name__ == "__main__":
     # Set data path to NEW scenes (with is_av flag)
     env_config.data_path = "data/train_no_tl"
 
-    # EXPERT-TELEPORT
-    df_expert_replay = evaluate_policy(
-        env_config=env_config,
-        controlled_agents=CONTROLLED_AGENTS,
-        data_path=env_config.data_path,
-        mode="expert_replay",
-        select_from_k_scenes=SELECT_FROM_K_SCENES,
-        num_episodes=NUM_EPISODES,
-        use_av_only=USE_AV_ONLY,
-    )
+    # # EXPERT-TELEPORT
+    # df_expert_replay = evaluate_policy(
+    #     env_config=env_config,
+    #     controlled_agents=CONTROLLED_AGENTS,
+    #     data_path=env_config.data_path,
+    #     mode="expert_replay",
+    #     select_from_k_scenes=SELECT_FROM_K_SCENES,
+    #     num_episodes=NUM_EPISODES,
+    #     use_av_only=USE_AV_ONLY,
+    # )
     
-    logging.info(f'--- Results: EXPERT-TELEPORT ---')
-    print(df_expert_replay[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    # logging.info(f'--- Results: EXPERT-TELEPORT ---')
+    # print(df_expert_replay[["goal_rate", "off_road", "veh_veh_collision"]].mean())
     
     # # RANDOM
     # df_random = evaluate_policy(
@@ -277,51 +279,52 @@ if __name__ == "__main__":
     # logging.info(f'--- Results: RANDOM ACTIONS ---')
     # print(df_random[["goal_rate", "off_road", "veh_veh_collision"]].mean())
     
-    # EXPERT-ACTIONS
-    df_expert_replay_actions = evaluate_policy(
-        env_config=env_config,
-        controlled_agents=CONTROLLED_AGENTS,
-        data_path=env_config.data_path,
-        mode="cont_expert_act_replay",
-        select_from_k_scenes=SELECT_FROM_K_SCENES,
-        num_episodes=NUM_EPISODES,
-        use_av_only=USE_AV_ONLY,
-    )
-    
-    logging.info(f'--- Results: EXPERT-TRAJECTORY ACTIONS ---')
-    print(df_expert_replay_actions[["goal_rate", "off_road", "veh_veh_collision"]].mean())
-    
-    # Discretized EXPERT-ACTIONS
-    df_expert_replay_actions_disc = evaluate_policy(
-        env_config=env_config,
-        controlled_agents=CONTROLLED_AGENTS,
-        data_path=env_config.data_path,
-        mode="disc_expert_act_replay",
-        select_from_k_scenes=SELECT_FROM_K_SCENES,
-        num_episodes=NUM_EPISODES,
-        use_av_only=USE_AV_ONLY,
-    )
-    
-    logging.info(f'--- Results: EXPERT-TRAJECTORY DISCRETIZED ACTIONS ste: {env_config.steering_discretization} | acc: {env_config.accel_discretization} ---')
-    print(df_expert_replay_actions_disc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
-
-    # BEHAVIORAL CLONING
-    # human_policy = load_policy(
-    #     data_path="models/il/",
-    #     file_name="human_policy_D403_S500_02_08_21_30", 
-    # )
-    
-    # df_bc = evaluate_policy(
+    # # EXPERT-ACTIONS
+    # df_expert_replay_actions = evaluate_policy(
     #     env_config=env_config,
-    #     controlled_agents=1,
+    #     controlled_agents=CONTROLLED_AGENTS,
     #     data_path=env_config.data_path,
-    #     mode="policy",
-    #     policy=human_policy,
+    #     mode="cont_expert_act_replay",
     #     select_from_k_scenes=SELECT_FROM_K_SCENES,
     #     num_episodes=NUM_EPISODES,
-    #     use_av_only=True,
+    #     use_av_only=USE_AV_ONLY,
     # )
     
-    # logging.info(f'--- Results: BEHAVIORAL CLONING ---')
-    # print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    # logging.info(f'--- Results: EXPERT-TRAJECTORY ACTIONS ---')
+    # print(df_expert_replay_actions[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+    
+    # # Discretized EXPERT-ACTIONS
+    # df_expert_replay_actions_disc = evaluate_policy(
+    #     env_config=env_config,
+    #     controlled_agents=CONTROLLED_AGENTS,
+    #     data_path=env_config.data_path,
+    #     mode="disc_expert_act_replay",
+    #     select_from_k_scenes=SELECT_FROM_K_SCENES,
+    #     num_episodes=NUM_EPISODES,
+    #     use_av_only=USE_AV_ONLY,
+    # )
+    
+    # logging.info(f'--- Results: EXPERT-TRAJECTORY DISCRETIZED ACTIONS ste: {env_config.steering_discretization} | acc: {env_config.accel_discretization} ---')
+    # print(df_expert_replay_actions_disc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+
+    # BEHAVIORAL CLONING
+    human_policy = load_policy(
+        data_path="models/il/",
+        file_name="human_policy_D651_S500_02_18_20_05_AV_ONLY",
+    )
+    
+    df_bc = evaluate_policy(
+        env_config=env_config,
+        controlled_agents=1,
+        data_path=env_config.data_path,
+        mode="policy",
+        policy=human_policy,
+        select_from_k_scenes=SELECT_FROM_K_SCENES,
+        num_episodes=NUM_EPISODES,
+        use_av_only=USE_AV_ONLY,
+    )
+    
+    logging.info(f'--- Results: BEHAVIORAL CLONING ---')
+    print(df_bc[["goal_rate", "off_road", "veh_veh_collision"]].mean())
+
 

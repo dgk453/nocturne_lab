@@ -133,9 +133,10 @@ def process_vehicle_combinations(expert_trajectories, vehicle_id_dict, allowed_t
                     step_dists.append(abs(closest_index_i - closest_index_j))
                     
                 # Increment the number of intersecting paths for both vehicles
-                if min(step_dists) < allowed_time_window:
-                    veh_id_to_intersecting_paths_dict[veh_i] += 1
-                    veh_id_to_intersecting_paths_dict[veh_j] += 1 
+                if len(step_dists) > 0:
+                    if min(step_dists) < allowed_time_window:
+                        veh_id_to_intersecting_paths_dict[veh_i] += 1
+                        veh_id_to_intersecting_paths_dict[veh_j] += 1 
                 
                 if step_dists:
                     min_step_dist = min(step_dists)
@@ -190,7 +191,7 @@ if __name__ == "__main__":
     env_config.max_num_vehicles = 500
     
     # Set data path for which we want to obtain the number of intersecting paths
-    env_config.data_path = "data/train_no_tl/"
+    env_config.data_path = "data/test_no_tl/"
     
     # Scenes on which to evaluate the models
     # Make sure file order is fixed so that we evalu on the same f iles used for training
@@ -207,6 +208,6 @@ if __name__ == "__main__":
         env=env, 
         traffic_scenes=files, 
         save_dict=True,
-        filename=f'info_dict_train_no_tl'
+        filename=f'info_dict_test_no_tl'
     )
     

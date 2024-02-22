@@ -28,6 +28,8 @@ class RegularizedPPO(MultiAgentPPO):
         reg_weight=None,
         *,
         reg_loss=None,
+        reg_weight_decay_schedule=None, # linear, exponential
+        reg_decay_rate=5, # Used for exponential weight decay
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -43,6 +45,8 @@ class RegularizedPPO(MultiAgentPPO):
                 f"reg_weight must be float between 0.0 and 1.0, got {reg_weight}."
             )
         self.reg_weight = reg_weight
+        self.reg_weight_decay_schedule = reg_weight_decay_schedule
+        self.reg_decay_rate = reg_decay_rate
 
         if self.reg_weight is None and reg_policy is not None:
             logging.warning(
@@ -155,9 +159,22 @@ class RegularizedPPO(MultiAgentPPO):
                 loss_ppo = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
 
                 if self.reg_weight is not None and self.reg_policy is not None:
-                    loss = (1 - self.reg_weight) * loss_ppo + self.reg_weight * loss_reg
+                    # If weight decay schedule is defined, decay the weight over time
+                    if self.reg_weight_decay_schedule is not None:
+                        if self.reg_weight_decay_schedule == "linear":
+                            reg_weight = self.reg_weight * self._current_progress_remaining
+                        elif self.reg_weight_decay_schedule == "exponential":
+                            reg_weight = self.reg_weight * np.exp(-self.reg_decay_rate * (1 - self._current_progress_remaining))
+                        else: raise ValueError(f"Invalid reg_weight_decay_schedule: {self.reg_weight_decay_schedule}")
+                    else: # Always use the same regularization weight
+                        reg_weight = self.reg_weight
+                    
+                    # Define the loss as a weighted sum of the PPO loss and the regularization loss
+                    loss = (1 - reg_weight) * loss_ppo + reg_weight * loss_reg
                 else:
+                    # Use default PPO loss
                     loss = loss_ppo
+                
                 # # # # # # # # # HR_PPO EDIT # # # # # # # # #
                 
                 # Calculate approximate form of reverse KL Divergence for early stopping
@@ -190,10 +207,11 @@ class RegularizedPPO(MultiAgentPPO):
 
         # Logs
         if self.reg_weight is not None and self.reg_policy is not None:
+            self.logger.record("regularize/reg_weight", reg_weight)
             self.logger.record("regularize/loss_ppo", np.abs(loss_ppo.item()))
             self.logger.record("regularize/loss_kl", loss_reg.item())
-            self.logger.record("regularize/loss_kl_weighted", self.reg_weight * loss_reg.item())
-            self.logger.record("regularize/loss_ppo_weighted", (1 - self.reg_weight) * np.abs(loss_ppo.item()))
+            self.logger.record("regularize/loss_kl_weighted", reg_weight * loss_reg.item())
+            self.logger.record("regularize/loss_ppo_weighted", (1 - reg_weight) * np.abs(loss_ppo.item()))
 
         self.logger.record("train/entropy_loss", np.mean(entropy_losses))
         self.logger.record("train/policy_gradient_loss", np.mean(pg_losses))

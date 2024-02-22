@@ -58,8 +58,8 @@ def gen_and_save_res_df(
                 eval_dataset = data_sets[dataset]
                 scene_to_paths_dict = intersection_dicts[dataset] if intersection_dicts is not None else None
                 
-                if num_controlled_agents >= 50:
-                    eval_episodes = num_scenes_to_select_from
+                if num_controlled_agents > 1:
+                    eval_episodes = num_scenes_to_select_from 
                 else:
                     eval_episodes = num_eval_episodes
                     
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     # Generate dataframe
     gen_and_save_res_df(
         num_scenes_to_select_from=100,
-        num_eval_episodes=1000,
+        num_eval_episodes=4000,
         env_config=env_config,
         intersection_dicts={'Train': train_scene_to_paths_dict},
         model_config=models_config,   

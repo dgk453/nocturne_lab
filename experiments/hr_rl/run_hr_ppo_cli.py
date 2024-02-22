@@ -84,10 +84,11 @@ def run_hr_ppo(
     dropout: float = 0.0,
     randomize_goals: int = 0,
     rand_goals_timesteps: str = 'A',
-    total_timesteps: int = 5_000_000,
-    num_files: int = 10,
+    total_timesteps: int = 60_000_000,
+    num_files: int = 100,
     reg_weight: float = 0.0,
-    num_controlled_veh: int = 20,
+    reg_weight_decay: str = "None",
+    num_controlled_veh: int = 1,
     pretrained_model: str = "None",
 ) -> None:
     """Train RL agent using PPO with CLI arguments."""
@@ -117,6 +118,8 @@ def run_hr_ppo(
     exp_config.ppo.batch_size = mini_batch_size
     exp_config.learn.total_timesteps = total_timesteps
     exp_config.reg_weight = reg_weight
+    if reg_weight_decay != "None":
+        exp_config.reg_weight_decay_schedule = reg_weight_decay
     
     # Model architecture
     exp_config.model_config.arch_ro = arch_road_objects
@@ -207,6 +210,7 @@ def run_hr_ppo(
             learning_rate=linear_schedule(exp_config.ppo.learning_rate),
             reg_policy=human_policy,
             reg_weight=exp_config.reg_weight,  # Regularization weight; lambda
+            reg_weight_decay_schedule=exp_config.reg_weight_decay_schedule, # "None" / "linear" / exponential
             env=env,
             n_steps=exp_config.ppo.n_steps,
             policy=LateFusionPolicy,

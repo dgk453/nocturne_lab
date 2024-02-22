@@ -22,16 +22,13 @@ from gym.spaces import Box, Discrete
 
 from nocturne import Action, Simulation, Vector2D, Vehicle
 from utils.config import load_config
+np.set_printoptions(suppress=True)
 
 _MAX_NUM_TRIES_TO_FIND_VALID_VEHICLE = 100
-
-logging.getLogger("__name__")
 
 ActType = TypeVar("ActType")  # pylint: disable=invalid-name
 ObsType = TypeVar("ObsType")  # pylint: disable=invalid-name
 RenderType = TypeVar("RenderType")  # pylint: disable=invalid-name
-
-np.set_printoptions(suppress=True)
 
 class CollisionType(Enum):
     """Enum for collision types."""
@@ -76,7 +73,11 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             "padding": padding,
         }
         self.seed(self.config.seed)
+
         self.use_av_only = self.config.use_av_only
+
+        self.count_invalid = 0
+        self.count_total = 0
 
         # Load valid vehicles dict 
         with open(self.config.data_path / "valid_files.json", encoding="utf-8") as file:
@@ -181,8 +182,7 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             veh_id = veh_obj.getID()
             if veh_id in self.done_ids:
                 continue
-
-            # Check if vehicle position is invalid 
+      
             if veh_obj.position.x == self.config.scenario.invalid_position:
                 logging.debug(f"(IN STEP) at t = {self.step_num} in {self.file}, vehicle {veh_obj.id} is invalid (pos = {veh_obj.position.x}). Removing it.")
                 self.invalid_samples += 1
@@ -552,12 +552,10 @@ class BaseEnv(Env):  # pylint: disable=too-many-instance-attributes
             )
             if self.config.normalize_state:
                 visible_state = self.normalize_obs_by_cat(visible_state)
-                if visible_state.max() > 2: 
-                    print(f'vis_state: {visible_state}')
 
         # Concatenate
         obs = np.concatenate((ego_state_norm, visible_state, cur_position))
-
+        
         return obs
 
     def _get_obs_space_dim(self, base=0):
@@ -825,42 +823,22 @@ def _position_as_array(position: Vector2D) -> np.ndarray:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-
-    env_config = load_config("env_config")
-    env_config.data_path = "data/train_no_tl"
-    env_config.num_files = 2000
-    env_config.max_num_vehicles = 200
-    env_config.num_files = 50
-    env_config.use_av_only = True
-
-    # Initialize an environment
-    env = BaseEnv(config=env_config)
-
-    obs_dict = env.reset()
-
-    # Get info
-    agent_ids = [agent_id for agent_id in obs_dict.keys()]
-    veh_objects = {agent.id: agent for agent in env.controlled_vehicles}
-    dead_agent_ids = []
     
-    for _ in range(500):
-        action_dict = {}
-        # # Take expert action
-        # expert_action = env.scenario.expert_action(av_veh_obj, env.step_num)
-        # action_dict[av_veh_obj.id] = expert_action
-
-        obs_dict, rew_dict, done_dict, info_dict = env.step(action_dict)
-
-        # Update dead agents
-        for agent_id, is_done in done_dict.items():
-            if is_done and agent_id not in dead_agent_ids:
-                dead_agent_ids.append(agent_id)
-
-        # Reset if all agents are done
-        if done_dict["__all__"]:
-            obs_dict = env.reset()
-            dead_agent_ids = []
-
-    # Close environment
-    env.close()
+    env_config = load_config('env_config')
+    env_config.num_files = 2000
+    
+    env = BaseEnv(env_config)
+    
+    obs = env.reset()
+    
+    for i in range(100_000):
+        
+        obs, rew, done, info = env.step({})
+        
+        if done['__all__']:
+            obs = env.reset()
+            print(str(env.file))
+    
+    
+    
+    

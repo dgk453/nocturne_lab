@@ -73,6 +73,7 @@ temp/
 # Waymo dataset
 data/train_no_tl/
 data/valid_no_tl/
+data/test_no_tl/
 
 # Logging output
 logs/
