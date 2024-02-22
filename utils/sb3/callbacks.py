@@ -100,9 +100,7 @@ class CustomMultiAgentCallback(BaseCallback):
         self.logger.record("rollout/global_step", self.num_timesteps)
         self.logger.record("rollout/iter", self.iteration)
         self.logger.record("rollout/obs_min", np.min(observations[valid_obs_mask]))
-        self.logger.record("rollout/obs_max", np.max(observations[valid_obs_mask]))
-        
-        print(f'goal_achieved: {self.avg_frac_goal_achieved}')
+        self.logger.record("rollout/obs_max", np.max(observations[valid_obs_mask]))        
 
         # Evaluate policy on train and test dataset TODO @ dc NOT USED
         # if self.iteration % self.exp_config.ma_callback.eval_freq == 0:
