@@ -68,12 +68,18 @@ void Object::draw(sf::RenderTarget& target, sf::RenderStates states) const {
   target.draw(arrow, states);
 }
 
-void Object::InitRandomColor() {
-  std::uniform_int_distribution<int32_t> dis(0, 255);
-  int32_t r = dis(random_gen_);
-  int32_t g = dis(random_gen_);
-  int32_t b = dis(random_gen_);
-  // Rescale colors to avoid dark objects.
+// TODO: set to back to true in object.h, set to false for testing
+void Object::InitRandomColor(bool random /*=false*/) {
+  int32_t r = 0, g = 0, b = 0;
+  if (random) {
+    std::uniform_int_distribution<int32_t> dis(0, 255);
+    // r = dis(random_gen_);
+    g = dis(random_gen_);
+    b = dis(random_gen_);
+  } else {
+    r = 255;
+  }
+  // Rescale colors to avoid dark object.
   const int32_t max_rgb = std::max({r, g, b});
   r = r * 255 / max_rgb;
   g = g * 255 / max_rgb;
@@ -115,10 +121,14 @@ void Object::KinematicBicycleStep(float dt) {
   //     new_yaw = yaw + steering * (speed * t + 1/2 * accel * t ** 2)
   //     new_vel = vel + accel * t
   geometry::Vector2D vel = Velocity();
-  geometry::Vector2D rot = geometry::Vector2D(std::cos(heading_), std::sin(heading_));
-  position_ = position_ + vel * dt + 0.5 * acceleration_ * rot * (float)pow(dt, 2);
+  geometry::Vector2D rot =
+      geometry::Vector2D(std::cos(heading_), std::sin(heading_));
+  position_ =
+      position_ + vel * dt + 0.5 * acceleration_ * rot * (float)pow(dt, 2);
 
-  heading_ = geometry::utils::AngleAdd(heading_, (float)(steering_ * (speed_ * dt + 0.5 * acceleration_ * pow(dt, 2))));
+  heading_ = geometry::utils::AngleAdd(
+      heading_,
+      (float)(steering_ * (speed_ * dt + 0.5 * acceleration_ * pow(dt, 2))));
   speed_ = ClipSpeed(speed_ + acceleration_ * dt);
 }
 

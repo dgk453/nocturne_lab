@@ -21,7 +21,9 @@ class Vehicle : public Object {
       : Object(id, length, width, position, heading, speed, target_position,
                target_heading, target_speed, can_block_sight, can_be_collided,
                check_collision),
-               is_av_(is_av){}
+        is_av_(is_av) {
+    Object::InitRandomColor(false);
+  }
 
   Vehicle(int64_t id, float length, float width, float max_speed,
           const geometry::Vector2D& position, float heading, float speed,
@@ -31,15 +33,16 @@ class Vehicle : public Object {
       : Object(id, length, width, max_speed, position, heading, speed,
                target_position, target_heading, target_speed, can_block_sight,
                can_be_collided, check_collision),
-                is_av_(is_av)
-               {}
+        is_av_(is_av) {
+    Object::InitRandomColor(false);
+  }
 
   ObjectType Type() const override { return ObjectType::kVehicle; }
 
   bool is_av() const { return is_av_; }
-  protected:
-  bool is_av_;
 
+ protected:
+  bool is_av_;
 };
 
 }  // namespace nocturne
