@@ -765,7 +765,7 @@ NdArray<unsigned char> Scenario::Image(uint64_t img_height, uint64_t img_width,
                 img_height, img_width, padding);
   }
   if (source->Type() == ObjectType::kVehicle) {
-    dynamic_cast<Vehicle*>(source)->colorAsSrc(sf::Color::Green);
+    dynamic_cast<Vehicle*>(source)->colorAsSrc();
   }
 
   // create canvas and draw objects

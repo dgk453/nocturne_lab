@@ -19,7 +19,7 @@
 #include "object_base.h"
 
 namespace nocturne {
-
+#define DEFAULT_COLOR sf::Color::Blue
 constexpr float kViewRadius = 120.0f;
 
 enum class ObjectType {
@@ -177,7 +177,8 @@ class Object : public ObjectBase {
   void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
 
   void InitRandomColor();
-  void InitColor(const std::optional<sf::Color>& color = std::nullopt);
+  void InitColor(const std::optional<sf::Color>& color =
+                     std::make_optional(DEFAULT_COLOR));
 
   void KinematicBicycleStep(float dt);
 

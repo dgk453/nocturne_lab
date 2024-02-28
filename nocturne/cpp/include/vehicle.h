@@ -8,6 +8,7 @@
 #include "object.h"
 
 namespace nocturne {
+#define SRC_COLOR sf::Color::Green
 
 class Vehicle : public Object {
  public:
@@ -36,16 +37,21 @@ class Vehicle : public Object {
         is_av_(is_av) {
     Object::InitColor(sf::Color::Blue);
   }
-  void colorAsSrc(const std::optional<sf::Color>& color = std::nullopt) {
+  void colorAsSrc(
+      const std::optional<sf::Color>& color = std::make_optional(SRC_COLOR)) {
     Object::InitColor(color);
+    is_src_ = true;
   }
 
   ObjectType Type() const override { return ObjectType::kVehicle; }
 
   bool is_av() const { return is_av_; }
 
+  void placeTrace() { return; }  // TODO: implement
+
  protected:
   bool is_av_;
+  bool is_src_ = false;
 };
 
 }  // namespace nocturne
