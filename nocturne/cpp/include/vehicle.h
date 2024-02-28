@@ -22,7 +22,7 @@ class Vehicle : public Object {
                target_heading, target_speed, can_block_sight, can_be_collided,
                check_collision),
         is_av_(is_av) {
-    Object::InitRandomColor(false);
+    Object::InitColor(sf::Color::Blue);
   }
 
   Vehicle(int64_t id, float length, float width, float max_speed,
@@ -34,7 +34,10 @@ class Vehicle : public Object {
                target_position, target_heading, target_speed, can_block_sight,
                can_be_collided, check_collision),
         is_av_(is_av) {
-    Object::InitRandomColor(false);
+    Object::InitColor(sf::Color::Blue);
+  }
+  void colorAsSrc(const std::optional<sf::Color>& color = std::nullopt) {
+    Object::InitColor(color);
   }
 
   ObjectType Type() const override { return ObjectType::kVehicle; }

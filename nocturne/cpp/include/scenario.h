@@ -173,7 +173,7 @@ class Scenario : public sf::Drawable {
   // (included in its width/height). If a `source` object is provided, computes
   // an image of a rectangle of size (`view_height`, `view_width`) centered
   // around the object, rather than of the whole scenario. Besides, if
-  // `rotate_with_source` is set to true, the source object will be pointing
+  // `rotate_with_` is set to true, the source object will be pointing
   // upwards (+pi/2) in the returned image. Note that the size of the view will
   // be scaled to fit the image size without changing the width:height ratio, so
   // that the resulting image is not distorted.

@@ -176,8 +176,8 @@ class Object : public ObjectBase {
  protected:
   void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
 
-  void InitRandomColor(bool random = true);  // if random is false the object
-                                             // will be set to false
+  void InitRandomColor();
+  void InitColor(const std::optional<sf::Color>& color = std::nullopt);
 
   void KinematicBicycleStep(float dt);
 

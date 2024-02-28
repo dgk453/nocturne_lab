@@ -18,6 +18,7 @@
 #include "geometry/polygon.h"
 #include "geometry/vector_2d.h"
 #include "utils/sf_utils.h"
+#include "vehicle.h"
 #include "view_field.h"
 
 namespace nocturne {
@@ -280,7 +281,8 @@ void Scenario::Step(float dt) {
     object->set_current_time(current_time_);
   }
   // std::cout << "[C++] t = " << current_time_ << std::endl;
-  // std::cout << "[C++] expert heading" << expert_headings_.at(22).at(current_time_) << std::endl;
+  // std::cout << "[C++] expert heading" <<
+  // expert_headings_.at(22).at(current_time_) << std::endl;
 
   // update the vehicle bvh
   object_bvh_.Reset(objects_);
@@ -762,6 +764,9 @@ NdArray<unsigned char> Scenario::Image(uint64_t img_height, uint64_t img_width,
     view = View(source->position(), rotation, view_height, view_width,
                 img_height, img_width, padding);
   }
+  if (source->Type() == ObjectType::kVehicle) {
+    dynamic_cast<Vehicle*>(source)->colorAsSrc(sf::Color::Green);
+  }
 
   // create canvas and draw objects
   Canvas canvas(img_height, img_width);
@@ -936,7 +941,7 @@ void Scenario::LoadObjects(const json& objects_json) {
           geometry::Vector2D(obj_velocity[i]["x"], obj_velocity[i]["y"]).Norm();
       const bool valid = static_cast<bool>(obj_valid[i]);
       const geometry::Vector2D cur_velocity(obj_velocity[i]["x"],
-                                         obj_velocity[i]["y"]);
+                                            obj_velocity[i]["y"]);
 
       cur_trajectory.push_back(cur_pos);
       cur_headings.push_back(cur_heading);
