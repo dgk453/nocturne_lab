@@ -4,12 +4,14 @@
 
 #pragma once
 
+#include <SFML/Graphics/Color.hpp>
+
 #include "geometry/vector_2d.h"
 #include "object.h"
 
 namespace nocturne {
-#define SRC_COLOR sf::Color::Green
-
+#define DEFAULT_COLOR sf::Color(128, 128, 128)  // gray
+#define SRC_COLOR sf::Color::Red
 class Vehicle : public Object {
  public:
   Vehicle() = default;
@@ -23,7 +25,7 @@ class Vehicle : public Object {
                target_heading, target_speed, can_block_sight, can_be_collided,
                check_collision),
         is_av_(is_av) {
-    Object::InitColor(sf::Color::Blue);
+    Object::InitColor(std::make_optional(DEFAULT_COLOR));
   }
 
   Vehicle(int64_t id, float length, float width, float max_speed,
@@ -35,7 +37,7 @@ class Vehicle : public Object {
                target_position, target_heading, target_speed, can_block_sight,
                can_be_collided, check_collision),
         is_av_(is_av) {
-    Object::InitColor(sf::Color::Blue);
+    Object::InitColor(std::make_optional(DEFAULT_COLOR));
   }
   void colorAsSrc(
       const std::optional<sf::Color>& color = std::make_optional(SRC_COLOR)) {
