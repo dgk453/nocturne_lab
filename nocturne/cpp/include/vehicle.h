@@ -11,6 +11,7 @@
 namespace nocturne {
 #define DEFAULT_COLOR sf::Color(128, 128, 128)  // gray
 #define SRC_COLOR sf::Color::Red
+#define TRACE_COLOR sf::Color::Red
 class Vehicle : public Object {
  public:
   Vehicle() = default;
@@ -51,9 +52,9 @@ class Vehicle : public Object {
     std::cout << "making trace" << std::endl;
     std::shared_ptr<sf::CircleShape> trace =
         std::make_shared<sf::CircleShape>(0.5);
-    trace->setFillColor(SRC_COLOR);
+    trace->setFillColor(TRACE_COLOR);
     trace->setPosition(utils::ToVector2f(position_));
-    // TODO : the position of the vehicle is the corner nto the middle
+    // TODO : the position of the vehicle is the corner not the middle
     traces_.push_back(trace);
   }
 
