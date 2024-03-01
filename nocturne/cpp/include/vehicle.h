@@ -4,10 +4,9 @@
 
 #pragma once
 
-#include <SFML/Graphics/Color.hpp>
-
 #include "geometry/vector_2d.h"
 #include "object.h"
+#include "utils/sf_utils.h"
 
 namespace nocturne {
 #define DEFAULT_COLOR sf::Color(128, 128, 128)  // gray
@@ -42,18 +41,29 @@ class Vehicle : public Object {
   void colorAsSrc(
       const std::optional<sf::Color>& color = std::make_optional(SRC_COLOR)) {
     Object::InitColor(color);
-    is_src_ = true;
   }
 
   ObjectType Type() const override { return ObjectType::kVehicle; }
 
   bool is_av() const { return is_av_; }
 
-  void placeTrace() { return; }  // TODO: implement
+  void makeTrace(sf::RenderTarget& target) {
+    std::cout << "making trace" << std::endl;
+    std::shared_ptr<sf::CircleShape> trace =
+        std::make_shared<sf::CircleShape>(0.5);
+    trace->setFillColor(SRC_COLOR);
+    trace->setPosition(utils::ToVector2f(position_));
+    // TODO : the position of the vehicle is the corner nto the middle
+    traces_.push_back(trace);
+  }
+
+  const std::vector<std::shared_ptr<sf::CircleShape>>& getTraces() const {
+    return traces_;
+  }
 
  protected:
   bool is_av_;
-  bool is_src_ = false;
+  std::vector<std::shared_ptr<sf::CircleShape>> traces_;
 };
 
 }  // namespace nocturne

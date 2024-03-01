@@ -738,7 +738,7 @@ void Scenario::draw(sf::RenderTarget& target,
   DrawOnTarget(target, objects_, view, horizontal_flip);
   DrawOnTarget(target, traffic_lights_, view, horizontal_flip);
   DrawOnTarget(target, stop_signs_, view, horizontal_flip);
-  DrawOnTarget(target, VehiclesDestinationsDrawables(), view, horizontal_flip);
+  // DrawOnTarget(target, src.getTraces(), view, horizontal_flip);
 }
 
 NdArray<unsigned char> Scenario::Image(uint64_t img_height, uint64_t img_width,
@@ -764,17 +764,20 @@ NdArray<unsigned char> Scenario::Image(uint64_t img_height, uint64_t img_width,
     view = View(source->position(), rotation, view_height, view_width,
                 img_height, img_width, padding);
   }
-  if (source->Type() == ObjectType::kVehicle) {
-    dynamic_cast<Vehicle*>(source)->colorAsSrc();
-  }
 
   // create canvas and draw objects
   Canvas canvas(img_height, img_width);
+  Vehicle* src = dynamic_cast<Vehicle*>(source);
+  if (source->Type() == ObjectType::kVehicle) {
+    src->colorAsSrc();
+    src->makeTrace(canvas);
+  }
 
   DrawOnTarget(canvas, road_lines_, view, horizontal_flip);
   DrawOnTarget(canvas, objects_, view, horizontal_flip);
   DrawOnTarget(canvas, traffic_lights_, view, horizontal_flip);
   DrawOnTarget(canvas, stop_signs_, view, horizontal_flip);
+  DrawOnTarget(canvas, src->getTraces(), view, horizontal_flip);
 
   if (draw_target_positions) {
     DrawOnTarget(canvas, VehiclesDestinationsDrawables(source), view,
