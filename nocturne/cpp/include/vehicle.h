@@ -13,9 +13,11 @@ namespace nocturne {
 #define SRC_COLOR \
   { sf::Color::Red, sf::Color::Green, sf::Color::Blue, sf::Color::Magenta }
 
-#define MIN_TRACE_SIZE 0.25
+#define MIN_TRACE_SIZE 0.3
 #define MAX_TRACE_SIZE 0.9
-#define TRACE_DECAY 0.1
+#define TRACE_DECAY 0.02
+#define TRACE_DELAY 5
+#define SLOW_SPEED 4  // speed below which traces are drawn slowly
 class Vehicle : public Object {
  public:
   Vehicle() = default;
@@ -54,8 +56,9 @@ class Vehicle : public Object {
 
   void makeTrace(sf::RenderTarget& target) {
     std::vector<sf::Color> src_colors = SRC_COLOR;
-    std::cout << speed_ << std::endl;
-    if (speed_ < 4) {  // less traces if moving slow (prevents cheetoing)
+    // std::cout << speed_ << std::endl;
+    if (speed_ <
+        SLOW_SPEED) {  // less traces if moving slow (prevents cheetoing)
       if (trace_delay_counter < trace_delay) {
         trace_delay_counter++;
         return;
@@ -67,11 +70,17 @@ class Vehicle : public Object {
     std::shared_ptr<sf::CircleShape> trace =
         std::make_shared<sf::CircleShape>(MAX_TRACE_SIZE);
     trace->setFillColor(src_colors[0]);
-    float xTranform;
-    float yTranform;
     // TODO : the position of the vehicle is the corner not the middle
-
-    trace->setPosition(utils::ToVector2f(position_));
+    float x = cos(heading_) * (length_ / 2) - sin(heading_) * (width_ / 2) +
+              position_.x();
+    float y = sin(heading_) * (length_ / 2) + cos(heading_) * (width_ / 2) +
+              position_.y();
+    // std::cout << "Heading: " << heading_ << std::endl;
+    // std::cout << "Position: " << position_.x() << " " << position_.y()
+    //           << std::endl;
+    // std::cout << "Width: " << width_ << " Length: " << length_ << std::endl;
+    // std::cout << "X: " << x << " Y: " << y << std::endl;
+    trace->setPosition(utils::ToVector2f({x, y}));
     // decay on the array of traces
     for (auto& t : traces_) {
       t->setRadius(t->getRadius() - (TRACE_DECAY));
@@ -90,7 +99,7 @@ class Vehicle : public Object {
   std::vector<std::shared_ptr<sf::CircleShape>> traces_;
 
  private:
-  int trace_delay = 20;
+  int trace_delay = TRACE_DELAY;
   int trace_delay_counter = 0;
 };
 
