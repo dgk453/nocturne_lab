@@ -81,6 +81,15 @@ void Object::InitRandomColor() {
   color_ = sf::Color(r, g, b);
 }
 
+void Object::InitColor(
+    const std::optional<sf::Color>& color /*=std::nullopt*/) {
+  if (color.has_value()) {
+    color_ = color.value();
+  } else {
+    InitRandomColor();
+  }
+}
+
 void Object::SetActionFromKeyboard() {
   // up: accelerate ; down: brake
   if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
@@ -115,10 +124,14 @@ void Object::KinematicBicycleStep(float dt) {
   //     new_yaw = yaw + steering * (speed * t + 1/2 * accel * t ** 2)
   //     new_vel = vel + accel * t
   geometry::Vector2D vel = Velocity();
-  geometry::Vector2D rot = geometry::Vector2D(std::cos(heading_), std::sin(heading_));
-  position_ = position_ + vel * dt + 0.5 * acceleration_ * rot * (float)pow(dt, 2);
+  geometry::Vector2D rot =
+      geometry::Vector2D(std::cos(heading_), std::sin(heading_));
+  position_ =
+      position_ + vel * dt + 0.5 * acceleration_ * rot * (float)pow(dt, 2);
 
-  heading_ = geometry::utils::AngleAdd(heading_, (float)(steering_ * (speed_ * dt + 0.5 * acceleration_ * pow(dt, 2))));
+  heading_ = geometry::utils::AngleAdd(
+      heading_,
+      (float)(steering_ * (speed_ * dt + 0.5 * acceleration_ * pow(dt, 2))));
   speed_ = ClipSpeed(speed_ + acceleration_ * dt);
 }
 
