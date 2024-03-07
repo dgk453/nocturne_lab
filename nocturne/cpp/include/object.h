@@ -123,6 +123,7 @@ class Object : public ObjectBase {
   void set_highlight(bool highlight) { highlight_ = highlight; }
 
   const sf::Color& color() const { return color_; }
+  void set_color(const sf::Color& color) { color_ = color; }
 
   sf::RenderTexture* ConeTexture() const { return cone_texture_.get(); }
 

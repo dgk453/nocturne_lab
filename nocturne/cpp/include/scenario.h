@@ -180,10 +180,12 @@ class Scenario : public sf::Drawable {
   NdArray<unsigned char> Image(uint64_t img_height = 1000,
                                uint64_t img_width = 1000,
                                bool draw_destinations = true,
-                               float padding = 0.0f, Object* source = nullptr,
+                               float padding = 0.0f, 
+                               const std::vector<Object*>& sources = std::vector<Object*>(),
                                uint64_t view_height = 200,
                                uint64_t view_width = 200,
-                               bool rotate_with_source = true) const;
+                               bool rotate_with_source = true,
+                               bool move_with_source = true) const;
 
   // Computes and returns an image of the visible state of the `source` object,
   // ie. the features returned by the `VisibleState` method. See the

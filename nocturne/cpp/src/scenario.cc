@@ -743,20 +743,24 @@ void Scenario::draw(sf::RenderTarget& target,
 
 NdArray<unsigned char> Scenario::Image(uint64_t img_height, uint64_t img_width,
                                        bool draw_target_positions,
-                                       float padding, Object* source,
+                                       float padding,
+                                       const std::vector<Object*>& sources,
                                        uint64_t view_height,
                                        uint64_t view_width,
-                                       bool rotate_with_source) const {
+                                       bool rotate_with_source,
+                                       bool move_with_source) const {
   // construct transform (flip the y-axis)
   sf::Transform horizontal_flip;
   horizontal_flip.scale(1, -1);
 
   // construct view
   sf::View view;
-  if (source == nullptr) {
+  if (sources.empty() || not move_with_source) {
     // if no source object is provided, get the entire scenario
     view = View(img_height, img_width, padding);
   } else {
+    // get the first element of sources
+    const Object* source = sources[0];
     // otherwise get a region around the source object, possibly rotated
     const float rotation =
         rotate_with_source ? geometry::utils::Degrees(source->heading()) - 90.0f
@@ -764,25 +768,37 @@ NdArray<unsigned char> Scenario::Image(uint64_t img_height, uint64_t img_width,
     view = View(source->position(), rotation, view_height, view_width,
                 img_height, img_width, padding);
   }
-
+  
   // create canvas and draw objects
   Canvas canvas(img_height, img_width);
-  Vehicle* src = dynamic_cast<Vehicle*>(source);
-  if (source->Type() == ObjectType::kVehicle) {
-    src->colorAsSrc();
-    src->makeTrace(canvas);
+  // Iterate over the objects in sources
+  int i = 0;
+  // create a fixed list of colors for the vehicles
+  std::vector<sf::Color> color_list = {
+      sf::Color::Red, sf::Color::Green, sf::Color::Blue, sf::Color::Yellow,
+      sf::Color::Magenta, sf::Color::Cyan, sf::Color::White, sf::Color::Black};
+
+  for (const auto& source : sources) {
+    Vehicle* src = dynamic_cast<Vehicle*>(source);
+    if (source->Type() == ObjectType::kVehicle) {
+      // set the source color from color_list
+      src->set_color(color_list[i]);
+      src->makeTrace(canvas);
+    }
+    DrawOnTarget(canvas, src->getTraces(), view, horizontal_flip);
+    if (draw_target_positions) {
+      DrawOnTarget(canvas, VehiclesDestinationsDrawables(source), view,
+                  horizontal_flip);
+    }
+    i += 1;
   }
+  
 
   DrawOnTarget(canvas, road_lines_, view, horizontal_flip);
   DrawOnTarget(canvas, objects_, view, horizontal_flip);
   DrawOnTarget(canvas, traffic_lights_, view, horizontal_flip);
   DrawOnTarget(canvas, stop_signs_, view, horizontal_flip);
-  DrawOnTarget(canvas, src->getTraces(), view, horizontal_flip);
 
-  if (draw_target_positions) {
-    DrawOnTarget(canvas, VehiclesDestinationsDrawables(source), view,
-                 horizontal_flip);
-  }
 
   return canvas.AsNdArray();
 }
