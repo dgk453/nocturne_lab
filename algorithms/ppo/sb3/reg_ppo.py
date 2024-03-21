@@ -4,14 +4,14 @@ import logging
 
 import numpy as np
 from stable_baselines3.common.utils import explained_variance
-import torch
-from gymnasium import spaces
-from nocturne.envs.vec_env_ma import MultiAgentAsVecEnv
-from utils.config import load_config
-from utils.sb3.ma_ppo import MultiAgentPPO
-from torch.nn import functional as F
-
 from stable_baselines3.common.policies import ActorCriticPolicy
+import torch
+from torch.nn import functional as F
+from gymnasium import spaces
+
+from nocturne.envs.vec_env_ma import MultiAgentAsVecEnv
+from algorithms.ppo.sb3.ma_ppo import MultiAgentPPO
+from utils.config import load_config
 
 logging.getLogger(__name__)
 
@@ -110,8 +110,8 @@ class RegularizedPPO(MultiAgentPPO):
                     loss_reg = self.reg_loss(   
                         policy_action_dist.log(), reg_policy_action_dist.log()
                     )
+                    
                 # # # # # # # # # HR_PPO EDIT # # # # # # # # #
-
                 values, log_prob, entropy = self.policy.evaluate_actions(rollout_data.observations, actions)
                 values = values.flatten()
                 # Normalize advantage

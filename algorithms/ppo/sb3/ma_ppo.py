@@ -14,7 +14,7 @@ from torch import nn
 from networks.perm_eq_late_fusion import LateFusionNet
 
 # Import masked buffer class
-from utils.sb3.masked_buffer import MaskedRolloutBuffer
+from algorithms.ppo.sb3.masked_buffer import MaskedRolloutBuffer
 
 logging.getLogger(__name__)
 

@@ -1,9 +1,6 @@
 """Train HR-PPO agent with CLI arguments."""
 import logging
 import os
-from datetime import datetime
-from random import randint
-from time import sleep
 from typing import Callable
 import numpy as np
 import torch
@@ -22,11 +19,9 @@ from utils.random_utils import init_seed
 from utils.render import make_video
 
 # Custom callback
-from utils.sb3.callbacks import CustomMultiAgentCallback
-
+from algorithms.ppo.sb3.callbacks import CustomMultiAgentCallback
 # Custom PPO class that supports multi-agent control
-from utils.sb3.reg_ppo import RegularizedPPO
-from utils.string_utils import datetime_to_str
+from algorithms.ppo.sb3.reg_ppo import RegularizedPPO
 
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
@@ -83,11 +78,11 @@ def run_hr_ppo(
     dropout: float = 0.0,
     randomize_goals: int = 0,
     rand_goals_timesteps: str = 'A',
-    total_timesteps: int = 60_000_000,
+    total_timesteps: int = 20_000_000,
     num_files: int = 10,
     reg_weight: float = 0.0,
     reg_weight_decay: str = "None",
-    num_controlled_veh: int = 1,
+    num_controlled_veh: int = 50,
     pretrained_model: str = "None",
 ) -> None:
     """Train RL agent using PPO with CLI arguments."""

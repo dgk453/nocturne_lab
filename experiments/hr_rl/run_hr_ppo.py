@@ -18,16 +18,14 @@ from nocturne.envs.vec_env_ma import MultiAgentAsVecEnv
 from utils.config import load_config
 from utils.random_utils import init_seed
 from utils.render import make_video
-
-# Custom callback
-from utils.sb3.callbacks import CustomMultiAgentCallback
-
-# Custom PPO class that supports multi-agent control
-from utils.sb3.reg_ppo import RegularizedPPO
 from utils.string_utils import datetime_to_str
 
-logging.basicConfig(level=logging.INFO)
+# Custom callback
+from algorithms.ppo.sb3.callbacks import CustomMultiAgentCallback
+# Custom PPO class that supports multi-agent control
+from algorithms.ppo.sb3.reg_ppo import RegularizedPPO
 
+logging.basicConfig(level=logging.INFO)
 
 def linear_schedule(initial_value: float) -> Callable[[float], float]:
     """
