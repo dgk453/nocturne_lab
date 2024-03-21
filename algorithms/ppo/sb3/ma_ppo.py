@@ -208,25 +208,3 @@ class MultiAgentPPO(PPO):
                 )
 
             self.clip_range_vf = get_schedule_fn(self.clip_range_vf)
-
-
-if __name__ == "__main__":
-    # env_config = load_config("env_config")
-
-    # # Make environment
-    # env = MultiAgentAsVecEnv(
-    #     config=env_config,
-    #     num_envs=env_config.max_num_vehicles,
-    # )
-
-    # model = MultiAgentPPO(
-    #     env=env,
-    #     policy=LateFusionPolicy,
-    #     env_config=env_config,
-    #     mlp_class=LateFusionNet,
-    #     mlp_config=None,  # TODO: Make sure to also save the model config
-    # )
-
-    SAVE_DIR = "./models/rl/policy_65548"
-
-    model = MultiAgentPPO.load(SAVE_DIR)

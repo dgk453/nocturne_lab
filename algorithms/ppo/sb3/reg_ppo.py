@@ -165,7 +165,8 @@ class RegularizedPPO(MultiAgentPPO):
                             reg_weight = self.reg_weight * self._current_progress_remaining
                         elif self.reg_weight_decay_schedule == "exponential":
                             reg_weight = self.reg_weight * np.exp(-self.reg_decay_rate * (1 - self._current_progress_remaining))
-                        else: raise ValueError(f"Invalid reg_weight_decay_schedule: {self.reg_weight_decay_schedule}")
+                        elif self.reg_weight_decay_schedule == "None":
+                            reg_weight = self.reg_weight
                     else: # Always use the same regularization weight
                         reg_weight = self.reg_weight
                     
@@ -227,42 +228,3 @@ class RegularizedPPO(MultiAgentPPO):
         self.logger.record("train/clip_range", clip_range)
         if self.clip_range_vf is not None:
             self.logger.record("train/clip_range_vf", clip_range_vf)
-
-
-if __name__ == "__main__":
-
-    env_config = load_config("env_config")
-    exp_config = load_config("exp_config")
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # TODO: put in config
-    trained_il_model_path = "models/il/human_policy_2023_11_19.pt"
-
-    # Make env
-    env = MultiAgentAsVecEnv(
-        config=env_config, 
-        num_envs=env_config.max_num_vehicles,
-    )
-
-    # Model class must be defined somewhere
-    saved_variables = torch.load(trained_il_model_path, map_location=device)
-    # Create policy object
-    human_policy = ActorCriticPolicy(**saved_variables["data"])
-    # Load weights
-    human_policy.load_state_dict(saved_variables["state_dict"])
-    human_policy.to(device)
-   
-    # Load human reference policy
-    model = RegularizedPPO(
-        reg_policy=human_policy,
-        reg_weight=exp_config.reg_weight,
-        env=env,
-        n_steps=exp_config.ppo.n_steps,
-        policy=exp_config.ppo.policy,
-        ent_coef=exp_config.ppo.ent_coef,
-        vf_coef=exp_config.ppo.vf_coef,
-        seed=exp_config.seed,  # Seed for the pseudo random generators
-        verbose=exp_config.verbose,
-    )
-    
