@@ -17,9 +17,9 @@ models_config = load_config("model_config") # Trained models
 # Evaluation settings
 EVAL_MODE = 'Self-play'
 DATASET = 'data/train_no_tl'
-NUM_EVAL_EPISODES = 100 # Number of episodes to evaluate on
+NUM_EVAL_EPISODES = 200 # Number of episodes to evaluate on
 DETERMINISTIC = True 
-SELECT_FROM = 100 # Number of test scenes
+SELECT_FROM = 200 # Number of test scenes
 MAX_CONTROLLED_AGENTS = 200 # All agents are controlled
 
 # Dataset

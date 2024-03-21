@@ -70,7 +70,7 @@ nocturne/_version.py
 # temporary files
 temp/
 
-# Waymo dataset
+# WOMDB dataset
 data/train_no_tl/
 data/valid_no_tl/
 data/test_no_tl/
@@ -81,11 +81,11 @@ logs/
 # Trained models
 models/
 
-# Figures and results
+# Figures
 figures/
-results/
 paper/
 
 # Videos and scene info dicts
-videos/
-scene_info/
+evaluation/videos/
+
+configs/model_bc_quality.yaml
