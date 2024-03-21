@@ -91,7 +91,7 @@ def train_bc(
     
     logging.info("(3/4) Training...")
 
-    # Create for loop over rollouts:  # TODO@Daphne: Refactor comment
+    # Create for loop over rollouts:  
     # 1. Load rollout, create transitions, train policy
     # 2. If more rollouts to load, load and go to step 1
     # 3. If no more rollouts, evaluate policy

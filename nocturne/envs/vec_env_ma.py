@@ -249,7 +249,7 @@ class MultiAgentAsVecEnv(VecEnv):
 
 
 if __name__ == "__main__":
-    MAX_AGENTS = 3
+    MAX_AGENTS = 2
     NUM_STEPS = 400
 
     # Load environment variables and config

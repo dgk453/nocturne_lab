@@ -173,17 +173,19 @@ class Scenario : public sf::Drawable {
   // (included in its width/height). If a `source` object is provided, computes
   // an image of a rectangle of size (`view_height`, `view_width`) centered
   // around the object, rather than of the whole scenario. Besides, if
-  // `rotate_with_source` is set to true, the source object will be pointing
+  // `rotate_with_` is set to true, the source object will be pointing
   // upwards (+pi/2) in the returned image. Note that the size of the view will
   // be scaled to fit the image size without changing the width:height ratio, so
   // that the resulting image is not distorted.
   NdArray<unsigned char> Image(uint64_t img_height = 1000,
                                uint64_t img_width = 1000,
                                bool draw_destinations = true,
-                               float padding = 0.0f, Object* source = nullptr,
+                               float padding = 0.0f, 
+                               const std::vector<Object*>& sources = std::vector<Object*>(),
                                uint64_t view_height = 200,
                                uint64_t view_width = 200,
-                               bool rotate_with_source = true) const;
+                               bool rotate_with_source = true,
+                               bool move_with_source = true) const;
 
   // Computes and returns an image of the visible state of the `source` object,
   // ie. the features returned by the `VisibleState` method. See the

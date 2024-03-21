@@ -102,7 +102,7 @@ def make_video(
             subprocess.call(
                 [
                     "python",
-                    "utils/render_in_subprocess.py", #TODO @Daphne: Change this so that hardcoded path is removed
+                    "utils/render_in_subprocess.py", 
                     temp_dir,
                     model if isinstance(model, str) else "custom",
                     str(filenames[scene_idx]) if filenames[0] is not None else " ",

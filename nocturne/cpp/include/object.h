@@ -19,7 +19,6 @@
 #include "object_base.h"
 
 namespace nocturne {
-
 constexpr float kViewRadius = 120.0f;
 
 enum class ObjectType {
@@ -124,6 +123,7 @@ class Object : public ObjectBase {
   void set_highlight(bool highlight) { highlight_ = highlight; }
 
   const sf::Color& color() const { return color_; }
+  void set_color(const sf::Color& color) { color_ = color; }
 
   sf::RenderTexture* ConeTexture() const { return cone_texture_.get(); }
 
@@ -177,6 +177,7 @@ class Object : public ObjectBase {
   void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
 
   void InitRandomColor();
+  void InitColor(const std::optional<sf::Color>& color = std::nullopt);
 
   void KinematicBicycleStep(float dt);
 

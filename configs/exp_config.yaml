@@ -1,5 +1,5 @@
-project: new_env
-group: base_S100_A1
+project: nocturne_10_scenes
+group: PPO
 env_id: Nocturne
 seed: 42
 track_wandb: true
