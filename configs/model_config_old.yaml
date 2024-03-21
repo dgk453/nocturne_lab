@@ -1,0 +1,60 @@
+# Base paths 
+bc_models_dir: models/il
+hr_ppo_models_dir_self_play: models/hr_rl/self_play_0221
+
+# The human reference policy used for HR-PPO
+used_human_policy: 
+  - name: human_policy_D651_S500_02_18_20_05_AV_ONLY
+    agent: BC
+    train_agent: '-'
+    wandb_run: '-'
+
+# HR-PPO models
+best_overall_models: 
+  - name: policy_L0.0_S100_I2500.zip
+    agent: PPO
+    reg_weight: 0.0 
+    train_agent: Self-play
+    wandb_run: 
+
+  - name: policy_L0.01_S100_I2579.zip
+    reg_weight: 0.01
+    agent: HR-PPO
+    train_agent: Self-play
+    wandb_run: 
+
+  - name: policy_L0.02_S100_I2585.zip
+    reg_weight: 0.02
+    agent: HR-PPO
+    train_agent: Self-play
+    wandb_run: 
+
+  - name: policy_L0.03_S100_I2611.zip
+    reg_weight: 0.03
+    agent: HR-PPO
+    train_agent: Self-play
+    wandb_run: 
+  
+  - name: policy_L0.04_S100_I2500.zip
+    reg_weight: 0.04
+    agent: HR-PPO
+    train_agent: Self-play
+    wandb_run: 
+
+  - name: policy_L0.05_S100_I2000.zip
+    reg_weight: 0.05
+    agent: HR-PPO
+    train_agent: Self-play
+    wandb_run: 
+
+  - name: policy_L0.1_S100_I2000.zip
+    reg_weight: 0.1
+    agent: HR-PPO
+    train_agent: Self-play
+    wandb_run: 
+
+  - name: policy_L0.2_S100_I2000.zip
+    reg_weight: 0.2
+    agent: HR-PPO
+    train_agent: Self-play
+    wandb_run: 

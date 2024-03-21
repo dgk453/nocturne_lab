@@ -1,0 +1,40 @@
+# Base paths 
+bc_models_dir: models/il/bc_quality
+hr_ppo_models_dir_self_play: models/hr_rl/bc_quality_s200
+
+# HR-PPO models and the bc policies they have been trained with
+# Trained on 75 scenes
+trained_models: 
+  - hr_ppo_name: policy_L0.0_IL_0_I1200.zip
+    agent: PPO
+    reg_weight: 0.0
+    il_policy: 0_scenes
+    il_policy_name: 
+    train_agent: Self-play
+    wandb_run: 
+
+  - hr_ppo_name: policy_L0.07_IL_1_I1800.zip
+    agent: HR-PPO
+    reg_weight: 0.06
+    il_policy: 1_scenes
+    il_policy_name: human_policy_D651_S1_av_only
+    train_agent: Self-play
+    wandb_run: 
+
+  - hr_ppo_name: policy_L0.07_IL_50_I2927.zip
+    agent: HR-PPO
+    reg_weight: 0.06 
+    il_policy: 50_scenes
+    il_policy_name: human_policy_D651_S50_av_only
+    train_agent: Self-play
+    wandb_run: earthy-eon-227
+
+  - hr_ppo_name: policy_L0.07_IL_500_I2600.zip
+    agent: HR-PPO
+    reg_weight: 0.06
+    il_policy: 200_scenes
+    il_policy_name: human_policy_D651_S500_02_18_20_05_AV_ONLY
+    train_agent: Self-play
+    wandb_run: azure-lake-235
+
+  
