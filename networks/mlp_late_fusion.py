@@ -49,7 +49,6 @@ class LateFusionMLP(nn.Module):
         self.arch_shared_net = arch_shared_net
         self.dropout = dropout
 
-        #TODO @Daphne: write function that gets this information from config
         self.input_dim_ego = 10 * self.config.subscriber.n_frames_stacked
         self.input_dim_road_graph = 6500 * self.config.subscriber.n_frames_stacked
         self.input_dim_road_objects = 220 * self.config.subscriber.n_frames_stacked

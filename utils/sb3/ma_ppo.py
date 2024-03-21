@@ -18,16 +18,13 @@ from utils.sb3.masked_buffer import MaskedRolloutBuffer
 
 logging.getLogger(__name__)
 
-# TODO@Daphne: Fix Github Co-pilot chat in VSCode
-
-
 class MultiAgentPPO(PPO):
     """Adapted Proximal Policy Optimization algorithm (PPO) that is compatible with multi-agent environments."""
 
     def __init__(
         self,
         *args,
-        env_config: Optional[Box] = None,  # TODO@Daphne: Fix default env_config is used when not passed
+        env_config: Optional[Box] = None, 
         mlp_class: nn.Module = LateFusionNet,
         mlp_config: Optional[Box] = None,
         **kwargs,

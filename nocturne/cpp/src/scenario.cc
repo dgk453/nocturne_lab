@@ -567,7 +567,6 @@ std::optional<Action> Scenario::ExpertAction(const Object& obj,
   // Calculate the updated yaw using the velocity angle
   float real_new_yaw = std::atan2(cur_velocities[timestamp + 1].y(),
                                   cur_velocities[timestamp + 1].x());
-  // TODO: @ev Update real_new_yaw
   // if (cur_speeds[timestamp + 1] < 0.6) {
   //   real_new_yaw = new_yaw;
   // }
