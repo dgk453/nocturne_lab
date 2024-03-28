@@ -73,7 +73,7 @@ def make_video(
 
         # Record video for specified number of scenes
         for scene_idx in range(NUM_VIDEOS):
-
+            
             if filenames[0] is not None:
                 _ = env.reset(filenames[scene_idx])
             else: 
@@ -115,17 +115,22 @@ def make_video(
             )
 
             # Load frames from temp pickles
-            with open(temp_dir / "frames.pkl", "rb") as movie_frames_file:
-                movie_frames = pickle.load(movie_frames_file)
-
-            # Log video to wandb
-            video_key = f"Policy | Scene #{scene_idx}" if n_steps is not None else model
-            wandb.log(
-                {
-                    "step": n_steps,
-                    video_key: wandb.Video(movie_frames, fps=frames_per_second, caption=f'Global step: {formatted_global_step}'),
-                },
-            )
+            try:
+                with open(temp_dir / "frames.pkl", "rb") as movie_frames_file:
+                    movie_frames = pickle.load(movie_frames_file)
+        
+                # Log video to wandb
+                video_key = f"Scene {str(env.file)}" if n_steps is not None else model
+                wandb.log(
+                    {
+                        "step": n_steps,
+                        video_key: wandb.Video(movie_frames, fps=frames_per_second, caption=f'Global step: {formatted_global_step}'),
+                    },
+                )
+            except FileNotFoundError:
+                print("No frames found")
+                continue
+                
         
         env.close()
         env_config.sample_file_method = "random"

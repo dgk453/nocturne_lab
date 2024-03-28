@@ -102,17 +102,13 @@ class CustomMultiAgentCallback(BaseCallback):
         self.logger.record("rollout/obs_min", np.min(observations[valid_obs_mask]))
         self.logger.record("rollout/obs_max", np.max(observations[valid_obs_mask]))        
 
-        # Evaluate policy on train and test dataset TODO @ dc NOT USED
-        # if self.iteration % self.exp_config.ma_callback.eval_freq == 0:
-        #     self._evaluate_policy(policy=self.model, dataset="train", name="train_det", data_folder="data_full", det_mode=True)
-
         # Render
         if self.exp_config.track_wandb:
             wandb.log({"rollout/obs_dist": wandb.Histogram(np_histogram=np.histogram(observations[valid_obs_mask]))})
         
         # Make a video with a random scene
         if self.exp_config.ma_callback.save_video:
-            if self.iteration % self.exp_config.ma_callback.video_save_freq == 0:
+            if (self.iteration - 1) % self.exp_config.ma_callback.video_save_freq == 0:
                 logging.info(f"Making video at iter = {self.iteration} | global_step = {self.num_timesteps}")
                 make_video(
                     env_config=self.env_config,
@@ -129,12 +125,6 @@ class CustomMultiAgentCallback(BaseCallback):
             if self.iteration % self.exp_config.ma_callback.model_save_freq == 0:
                 self._save_model()
 
-        # TODO @dc do this properly
-        # If intermediate goals are on, turn them off after ~ 2 M steps
-        if self.num_timesteps > 2_000_000 and self.locals["env"].env.config.target_positions.randomize_goals:
-            self.locals["env"].env.config.target_positions.randomize_goals = False
-            logging.info(f'Turning off randomized intermediate goals.')
-            
         # Update probabilities for sampling scenes
         if self.locals["env"].psr_dict is not None:
             self._update_sampling_probs()

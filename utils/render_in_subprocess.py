@@ -76,10 +76,26 @@ def render(
             # If we're on a headless machine: activate display and render
             if headless_machine:
                 with Display(backend="xvfb") as disp:
-                    render_scene = env.scenario.getImage(**video_config.render)
+                    render_scene = env.scenario.getImage(
+                            img_width=1000,
+                            img_height=1000,
+                            draw_target_positions=True,
+                            padding=-10,
+                            view_width=100,
+                            view_height=100,
+                            rotate_with_source=False,
+                    )
                     frames.append(render_scene.T)
             else:
-                render_scene = env.scenario.getImage(**video_config.render)
+                render_scene = env.scenario.getImage(
+                    img_width=1000,
+                    img_height=1000,
+                    draw_target_positions=True,
+                    padding=10.0,
+                    view_width=100,
+                    view_height=100,
+                    rotate_with_source=False,
+                )
                 frames.append(render_scene.T)
 
         if next_done_dict["__all__"]:

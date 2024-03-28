@@ -1,5 +1,5 @@
-project: nocturne_example_runs
-group: PPO
+project: example_runs
+group: 10_scenes
 env_id: Nocturne
 seed: 42
 track_wandb: true
@@ -16,9 +16,9 @@ wandb:
 ma_callback:
   save_model: true
   save_video: true
-  model_save_freq: 1000 # In iterations (one iter ~ (num_agents x n_steps))
-  record_n_scenes: 5 # Number of different scenes to render
-  video_save_freq: 50 # Make a video every k iterations (100 iters ~ 1M steps)
+  model_save_freq: 200 # In iterations (one iter ~ (num_agents x n_steps))
+  record_n_scenes: 15 # Number of different scenes to render
+  video_save_freq: 30 # Make a video every k iterations (100 iters ~ 1M steps)
   video_deterministic: true
   eval_freq: 500 # Evaluate full RL task in deterministic mode (turn off intermediate goals)
 
@@ -35,7 +35,7 @@ learn:
 
 # human-regularized RL
 reg_weight: 0.0
-human_policy_path: models_trained/il/human_policy_D651_S500_02_18_20_05_AV_ONLY.pt
+human_policy_path: models_trained/il/human_policy_D651_S500_02_18_20_05_AV_ONLY.pt # Path to the human reference policy
 reg_weight_decay_schedule: None
 
 # Model arch

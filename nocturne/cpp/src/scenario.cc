@@ -777,21 +777,45 @@ NdArray<unsigned char> Scenario::Image(uint64_t img_height, uint64_t img_width,
       sf::Color::Red, sf::Color::Green, sf::Color::Blue, sf::Color::Yellow,
       sf::Color::Magenta, sf::Color::Cyan, sf::Color::White, sf::Color::Black};
 
-  for (const auto& source : sources) {
-    Vehicle* src = dynamic_cast<Vehicle*>(source);
-    if (source->Type() == ObjectType::kVehicle) {
-      // set the source color from color_list
-      src->set_color(color_list[i]);
-      src->makeTrace(canvas);
+  if (not sources.empty()) {
+    for (const auto& source : sources) {
+      Vehicle* src = dynamic_cast<Vehicle*>(source);
+      if (source->Type() == ObjectType::kVehicle) {
+        // set the source color from color_list
+        src->set_color(color_list[i]);
+        src->makeTrace(canvas);
+      }
+      DrawOnTarget(canvas, src->getTraces(), view, horizontal_flip);
+      if (draw_target_positions) {
+        DrawOnTarget(canvas, VehiclesDestinationsDrawables(source), view,
+                    horizontal_flip);
+      }
+      i += 1;
+      if (i == color_list.size()) {
+        i = 0;
+      }
     }
-    DrawOnTarget(canvas, src->getTraces(), view, horizontal_flip);
-    if (draw_target_positions) {
-      DrawOnTarget(canvas, VehiclesDestinationsDrawables(source), view,
-                  horizontal_flip);
-    }
-    i += 1;
   }
-  
+  // color all the vehicles
+  else {
+    for (const auto& obj : objects_) {
+      Vehicle* src = dynamic_cast<Vehicle*>(obj.get());
+    
+      if (obj->Type() == ObjectType::kVehicle) {
+        // get the vehicle id and cast it to an int
+        int veh_id = obj->id();
+        // mod the id by the length of the list
+        int color_id = veh_id % color_list.size();
+        src->set_color(color_list[color_id]);
+      }
+      DrawOnTarget(canvas, src->getTraces(), view, horizontal_flip);
+      if (draw_target_positions) {
+        DrawOnTarget(canvas, VehiclesDestinationsDrawables(obj.get()), view,
+                    horizontal_flip);
+      }
+    }
+  }
+    
 
   DrawOnTarget(canvas, road_lines_, view, horizontal_flip);
   DrawOnTarget(canvas, objects_, view, horizontal_flip);

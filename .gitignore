@@ -83,7 +83,7 @@ models/
 
 # Figures + dfs
 figures/
-results/
+evaluation/results/
 
 # Videos 
 evaluation/videos/
