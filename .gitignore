@@ -81,8 +81,9 @@ logs/
 # Trained models
 models/
 
-# Figures
+# Figures + dfs
 figures/
+results/
 
 # Videos 
 evaluation/videos/
