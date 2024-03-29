@@ -65,7 +65,7 @@ We release the best PPO-trained models with human regularization in [`models_tra
 
 After installing `nocturne_lab`, here is how you can run your own Human-Regularized PPO in 3 steps:
 
-- **Step 1**: Make sure you installed the dataset and set the `data_path` in `configs/env_config` to your folder.
+- **Step 1**: Make sure you installed the dataset and set the `data_path` in `configs/env_config.yaml` to your folder.
 - **Step 2**: You have access to our trained imitation learning policy in [models_trained/il](https://github.com/Emerge-Lab/nocturne_lab/tree/hr_rl/models_trained/il). Make sure that the `human_policy_path` in the `configs/exp_config.yaml` file is set to the IL policy you want to use.
 - **Step 3**: That's it! Now run:
 ```Python
