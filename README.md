@@ -47,12 +47,26 @@ env.close()
 
 You can download a part of the dataset (~2000 scenes) [here](https://www.dropbox.com/scl/fi/e5kjf7w8kxrop8ume7u2f/data.zip?rlkey=mix6dnexzdz48330p0m8s0r9s&dl=0). Once downloaded, add the data to the `./data` folder and make sure the `data_path` in `env_config` is set correctly.
 
-## Implemented algorithms
+## Algorithms
 
-| Algorithm                              | Reference                                                  | Code  | Compatible with    | Test report                                                                                                                                                                  |
-| -------------------------------------- | ---------------------------------------------------------- | ----- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PPO **single-agent** control | [Schulman et al., 2017](https://arxiv.org/pdf/1707.06347.pdf) | [ppo_with_sb3.ipynb](https://github.com/Emerge-Lab/nocturne_lab/blob/feature/nocturne_fork_cleanup/examples/04_ppo_with_sb3.ipynb) | SB3 |        ✅ [Link](https://wandb.ai/daphnecor/single_agent_control_sb3_ppo/reports/Nocturne-with-SB3-s-PPO--Vmlldzo1NTg2Nzc4?accessToken=ednsze52absctmzw9sx28ry0y8uv4zt6nn4pre48tw7d2gwema0ayb5dj2zewwyp)                            |
-| PPO **multi-agent** control  | [Schulman et al., 2017](https://arxiv.org/pdf/1707.06347.pdf) | [05_ppo_with_sb3_ma_control.py](https://github.com/Emerge-Lab/nocturne_lab/blob/main/examples/05_ppo_with_sb3_ma_control.py) | SB3 | ✅ [Link](https://api.wandb.ai/links/daphnecor/uzgoj8de) |
+| Algorithm                  | Reference                                                     | Implementation                                                                                   | How to run                                                     |
+| -------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| MAPPO                      | [(Vinitsky et al., 2021)](https://arxiv.org/abs/2103.01955)   | [ma_ppo.py](https://github.com/Emerge-Lab/nocturne_lab/blob/hr_rl/algorithms/ppo/sb3/ma_ppo.py)  | `python experiments/hr_rl/run_hr_ppo_cli.py --reg-weight 0.0`  |
+| Human-Regularized (MA) PPO | [(Cornelisse et al., 2024)](https://arxiv.org/abs/2403.19648) | [reg_ppo.py](https://github.com/Emerge-Lab/nocturne_lab/blob/main/algorithms/ppo/sb3/reg_ppo.py) | `python experiments/hr_rl/run_hr_ppo_cli.py --reg-weight 0.06` |
+
+
+## Run HR-PPO in 3 steps 
+
+After installing `nocturne_lab`, here is how you can run your own Human-Regularized PPO in 3 steps:
+- **Step 1**: Make sure you installed the dataset and set the `data_path` in `env_config` to your folder.
+- **Step 2**: You have access to our trained imitation learning policy in [models_trained/il](https://github.com/Emerge-Lab/nocturne_lab/tree/hr_rl/models_trained/il). Make sure that the `human_policy_path` in the `configs/exp_config.yaml` file is set to the IL policy you want to use.
+- **Step 3**: That's it! Now run:
+```
+python experiments/hr_rl/run_hr_ppo_cli.py reg-weight <your-regularization-weight>
+```
+where setting `reg-weight 0.0` will just run standard MAPPO. We used a regularization weight between 0.02 - 0.08 for the paper.
+
+
 ## Installation
 The instructions for installing Nocturne locally are provided below. To use the package on a HPC (e.g. HPC Greene), follow the instructions in [./hpc/hpc_setup.md](./hpc/hpc_setup.md).
 
