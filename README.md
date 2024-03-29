@@ -55,17 +55,20 @@ You can download a part of the dataset (~2000 scenes) [here](https://www.dropbox
 | Human-Regularized (MA) PPO | [(Cornelisse et al., 2024)](https://arxiv.org/abs/2403.19648) | [reg_ppo.py](https://github.com/Emerge-Lab/nocturne_lab/blob/main/algorithms/ppo/sb3/reg_ppo.py) | `python experiments/hr_rl/run_hr_ppo_cli.py --reg-weight 0.06` |
 
 
+
 ## Trained policies 🏋️‍♂️
 
 We release the best PPO-trained models with human regularization in [`models_trained/hr_rl`](https://github.com/Emerge-Lab/nocturne_lab/tree/hr_rl/models_trained/hr_rl). Additionally, we release the human reference policies, which can be found at [`models_trained/il`](https://github.com/Emerge-Lab/nocturne_lab/tree/hr_rl/models_trained/il). For the results presented in the paper, we used the IL policy trained on AVs (`human_policy_D651_S500_02_18_20_05_AV_ONLY.pt`).
 
+
 ## Run HR-PPO in 3 steps 🚀
 
 After installing `nocturne_lab`, here is how you can run your own Human-Regularized PPO in 3 steps:
-- **Step 1**: Make sure you installed the dataset and set the `data_path` in `env_config` to your folder.
+
+- **Step 1**: Make sure you installed the dataset and set the `data_path` in `configs/env_config` to your folder.
 - **Step 2**: You have access to our trained imitation learning policy in [models_trained/il](https://github.com/Emerge-Lab/nocturne_lab/tree/hr_rl/models_trained/il). Make sure that the `human_policy_path` in the `configs/exp_config.yaml` file is set to the IL policy you want to use.
 - **Step 3**: That's it! Now run:
-```
+```Python
 python experiments/hr_rl/run_hr_ppo_cli.py --reg-weight <your-regularization-weight>
 ```
 where setting `reg-weight 0.0` will just run standard MAPPO. We used a regularization weight between 0.02 - 0.08 for the paper.
@@ -73,6 +76,7 @@ where setting `reg-weight 0.0` will just run standard MAPPO. We used a regulariz
 
 ## Installation
 The instructions for installing Nocturne locally are provided below. To use the package on a HPC (e.g. HPC Greene), follow the instructions in [./hpc/hpc_setup.md](./hpc/hpc_setup.md).
+
 
 ### Requirements
 
