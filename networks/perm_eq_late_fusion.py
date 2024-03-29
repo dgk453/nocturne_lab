@@ -11,9 +11,6 @@ from torch import nn
 from nocturne.envs.vec_env_ma import MultiAgentAsVecEnv
 from utils.config import load_config
 
-# from utils.sb3.reg_ppo import RegularizedPPO
-
-
 class LateFusionNet(nn.Module):
     """Processes the env observation using a late fusion architecture."""
 

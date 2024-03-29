@@ -5,7 +5,6 @@ from gymnasium import spaces
 from typing import Callable, Dict
 import torch
 
-from networks.mlp_late_fusion import LateFusionMLP
 from utils.config import load_config
 
 def load_policy(data_path, file_name, policy_class=ActorCriticPolicy):
