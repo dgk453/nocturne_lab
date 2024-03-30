@@ -37,6 +37,9 @@ python experiments/hr_rl/run_hr_ppo_cli.py --reg-weight <your-regularization-wei
 ```
 where setting `reg-weight 0.0` will just run standard MAPPO. We used a regularization weight between 0.02 - 0.08 for the paper.
 
+## Nocturne PPO and HR-PPO benchmark 
+
+For transparency and reproducibility, we provide a detailed [report](https://api.wandb.ai/links/daphnecor/hhgw98vr) with a PPO and HR-PPO run on 15 scenarios. 
 
 ## Basic RL interface
 
