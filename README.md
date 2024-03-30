@@ -2,7 +2,46 @@
 
 `nocturne_lab` is a maintained fork of [Nocturne](https://github.com/facebookresearch/nocturne); a 2D, partially observed, driving simulator built in C++. You can get started with the intro examples 🏎️💨 [here](https://github.com/Emerge-Lab/nocturne_lab/tree/feature/nocturne_fork_cleanup/examples).
 
-## Basic usage
+---
+
+> ### 🚨 See our [project page](https://sites.google.com/view/driving-partners) and a 📝 [`wandb` report](https://wandb.ai/daphnecor/example_runs/reports/Nocturne-benchmark-PPO-and-Human-Regularized-PPO--Vmlldzo3MzUyNDA5) with videos and full training logs
+
+---
+
+## Dataset 
+
+You can download a part of the dataset (~2000 scenes) [here](https://www.dropbox.com/scl/fi/e5kjf7w8kxrop8ume7u2f/data.zip?rlkey=mix6dnexzdz48330p0m8s0r9s&dl=0). Once downloaded, add the data to the `./data` folder and make sure the `data_path` in `env_config` is set correctly.
+
+## Algorithms
+
+| Algorithm                  | Reference                                                     | Implementation                                                                                   | How to run                                                     |
+| -------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| MAPPO                      | [(Vinitsky et al., 2021)](https://arxiv.org/abs/2103.01955)   | [ma_ppo.py](https://github.com/Emerge-Lab/nocturne_lab/blob/hr_rl/algorithms/ppo/sb3/ma_ppo.py)  | `python experiments/hr_rl/run_hr_ppo_cli.py --reg-weight 0.0`  |
+| Human-Regularized (MA) PPO | [(Cornelisse et al., 2024)](https://arxiv.org/abs/2403.19648) | [reg_ppo.py](https://github.com/Emerge-Lab/nocturne_lab/blob/main/algorithms/ppo/sb3/reg_ppo.py) | `python experiments/hr_rl/run_hr_ppo_cli.py --reg-weight 0.06` |
+
+
+## Trained policies 🏋️‍♂️
+
+We release the best PPO-trained models with human regularization in [`models_trained/hr_rl`](https://github.com/Emerge-Lab/nocturne_lab/tree/hr_rl/models_trained/hr_rl). Additionally, we release the human reference policies, which can be found at [`models_trained/il`](https://github.com/Emerge-Lab/nocturne_lab/tree/hr_rl/models_trained/il). For the results presented in the paper, we used the IL policy trained on AVs (`human_policy_D651_S500_02_18_20_05_AV_ONLY.pt`).
+
+
+## Run HR-PPO in 3 steps 🚀
+
+After installing `nocturne_lab`, here is how you can run your own Human-Regularized PPO in 3 steps:
+
+- **Step 1**: Make sure you installed the dataset and set the `data_path` in `configs/env_config.yaml` to your folder.
+- **Step 2**: You have access to our trained imitation learning policy in [models_trained/il](https://github.com/Emerge-Lab/nocturne_lab/tree/hr_rl/models_trained/il). Make sure that the `human_policy_path` in the `configs/exp_config.yaml` file is set to the IL policy you want to use.
+- **Step 3**: That's it! Now run:
+```Python
+python experiments/hr_rl/run_hr_ppo_cli.py --reg-weight <your-regularization-weight>
+```
+where setting `reg-weight 0.0` will just run standard MAPPO. We used a regularization weight between 0.02 - 0.08 for the paper.
+
+## Nocturne PPO and HR-PPO benchmark 
+
+For transparency and reproducibility, we provide a detailed [report](https://api.wandb.ai/links/daphnecor/hhgw98vr) with a PPO and HR-PPO run on 15 scenarios. 
+
+## Basic RL interface
 
 ```python
 from nocturne.envs.base_env import BaseEnv
@@ -43,18 +82,10 @@ for step in range(1000):
 env.close()
 ```
 
-## Dataset
 
-You can download a part of the dataset (~2000 scenes) [here](https://www.dropbox.com/scl/fi/e5kjf7w8kxrop8ume7u2f/data.zip?rlkey=mix6dnexzdz48330p0m8s0r9s&dl=0). Once downloaded, add the data to the `./data` folder and make sure the `data_path` in `env_config` is set correctly.
-
-## Implemented algorithms
-
-| Algorithm                              | Reference                                                  | Code  | Compatible with    | Test report                                                                                                                                                                  |
-| -------------------------------------- | ---------------------------------------------------------- | ----- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PPO **single-agent** control | [Schulman et al., 2017](https://arxiv.org/pdf/1707.06347.pdf) | [ppo_with_sb3.ipynb](https://github.com/Emerge-Lab/nocturne_lab/blob/feature/nocturne_fork_cleanup/examples/04_ppo_with_sb3.ipynb) | SB3 |        ✅ [Link](https://wandb.ai/daphnecor/single_agent_control_sb3_ppo/reports/Nocturne-with-SB3-s-PPO--Vmlldzo1NTg2Nzc4?accessToken=ednsze52absctmzw9sx28ry0y8uv4zt6nn4pre48tw7d2gwema0ayb5dj2zewwyp)                            |
-| PPO **multi-agent** control  | [Schulman et al., 2017](https://arxiv.org/pdf/1707.06347.pdf) | [05_ppo_with_sb3_ma_control.py](https://github.com/Emerge-Lab/nocturne_lab/blob/main/examples/05_ppo_with_sb3_ma_control.py) | SB3 | ✅ [Link](https://api.wandb.ai/links/daphnecor/uzgoj8de) |
 ## Installation
 The instructions for installing Nocturne locally are provided below. To use the package on a HPC (e.g. HPC Greene), follow the instructions in [./hpc/hpc_setup.md](./hpc/hpc_setup.md).
+
 
 ### Requirements
 
