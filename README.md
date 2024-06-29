@@ -4,7 +4,7 @@
 
 ---
 
-> ### 🚨 See our [project page](https://sites.google.com/view/driving-partners) and a 📝 [`wandb` report](https://wandb.ai/daphnecor/example_runs/reports/Nocturne-benchmark-PPO-and-Human-Regularized-PPO--Vmlldzo3MzUyNDA5) with videos and full training logs
+> ### 🚨 See our [project page](https://sites.google.com/view/driving-partners) and a 📝 [`wandb` report](https://api.wandb.ai/links/daphnecor/n11rar8l) with videos and full training logs
 
 ---
 
