@@ -4,9 +4,12 @@
 
 ---
 
-> ### 🚨 See our [project page](https://sites.google.com/view/driving-partners) and a 📝 [`wandb` report](https://api.wandb.ai/links/daphnecor/n11rar8l) with videos and full training logs
-
+> ### 🚨 Update: We released a fast, GPU-accelerated version of Nocturne that runs at 1 Million FPS: [GPUDrive](https://github.com/Emerge-Lab/gpudrive) 
 ---
+
+
+
+> [Project page](https://sites.google.com/view/driving-partners) and 📝 [`wandb` report](https://api.wandb.ai/links/daphnecor/n11rar8l) with videos and full training logs
 
 ## Dataset 
 
