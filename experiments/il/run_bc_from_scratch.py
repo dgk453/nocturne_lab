@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torch.distributions.categorical import Categorical
+import sys
 
 # Utils
 from utils.config import load_config
@@ -15,11 +16,17 @@ from utils.config import load_config
 # Imitation learning data iterator
 from utils.imitation_learning.waymo_iterator import TrajectoryIterator
 
+import sys, os
+
+# Disable
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+
 if __name__ == "__main__":
-    
+
     BATCH_SIZE = 512
     FILE_LIMIT = 5
-    EPOCHS = 800
+    EPOCHS = 5
     MINIBATCHES = 5
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
@@ -82,15 +89,17 @@ if __name__ == "__main__":
             
     # Build model
     bc_policy = Net(
-        input_size=waymo_iterator.observation_space.shape[0], 
+        input_size=int(waymo_iterator.observation_space.shape[0]), 
         hidden_size=800, 
-        output_size=waymo_iterator.action_space.n
+        output_size=int(waymo_iterator.action_space.n)
     ).to(DEVICE)
     
     # Configure loss and optimizer
     optimizer = Adam(bc_policy.parameters(), lr=1e-4)
     
     global_step = 0
+
+    blockPrint()
     for epoch in range(EPOCHS):    
         for i in range(MINIBATCHES): 
           
@@ -109,7 +118,7 @@ if __name__ == "__main__":
               
             with torch.no_grad():
                 pred_action = bc_policy(obs, deterministic=True)
-                accuracy = (expert_action == pred_action).sum() / expert_action.shape[0]        
+                accuracy = (expert_action == pred_action).sum() / expert_action.shape[0] 
                 
             wandb.log({
                 "global_step": global_step,
@@ -118,3 +127,6 @@ if __name__ == "__main__":
             })
             
             global_step += 1
+
+    torch.save(bc_policy, "bc_policy_trained.pt") # Save
+
