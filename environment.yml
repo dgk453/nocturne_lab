@@ -1,5 +1,0 @@
-name: nocturne
-channels:
-  - defaults
-dependencies:
-  - python=3.10
